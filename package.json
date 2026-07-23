@@ -99,7 +99,6 @@
     "typescript": "5.9.3",
     "vite": "^7.1.7",
     "vitest": "^2.1.4"
-    "@libsql/client": "^0.6.0",
+    "@libsql/client": "^0.6.0"
   }
-  
 }
