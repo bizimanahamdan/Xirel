@@ -1,14 +1,11 @@
-import path from "node:path";
 import { defineConfig } from "drizzle-kit";
-
-const databaseFile =
-  process.env.DATABASE_FILE ?? path.resolve(process.cwd(), "data", "store.db");
 
 export default defineConfig({
   schema: "./drizzle/schema.ts",
-  out: "./drizzle/migrations",
-  dialect: "sqlite",
+  out: "./drizzle",
+  dialect: "turso",
   dbCredentials: {
-    url: databaseFile,
+    url: process.env.DATABASE_URL!,
+    authToken: process.env.DATABASE_AUTH_TOKEN!,
   },
 });
