@@ -1,0 +1,25 @@
+
+    uploadImage: adminProcedure
+      .input(
+        z.object({
+          imageData: z.string(),
+          fileName: z.string(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        try {
+          const buffer = Buffer.from(input.imageData, "base64");
+          const result = await storagePut(
+            `products/${input.fileName}`,
+            buffer,
+            "image/jpeg"
+          );
+          return result;
+        } catch (error) {
+          console.error("Image upload error:", error);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to upload image",
+          });
+        }
+      }),

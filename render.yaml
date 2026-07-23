@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: xirel
+    env: docker
+    plan: starter # Render's free plan doesn't support persistent disks — Starter (~$7/mo) is the cheapest that does
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_EMAIL
+        sync: false
+    disk:
+      name: store-data
+      mountPath: /data
+      sizeGB: 1
