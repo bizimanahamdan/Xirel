@@ -3,10 +3,17 @@ import fs from "fs";
 import { type Server } from "http";
 import { nanoid } from "nanoid";
 import path from "path";
-import { createServer as createViteServer } from "vite";
-import viteConfig from "../../vite.config";
 
 export async function setupVite(app: Express, server: Server) {
+  // Dynamically imported so these dev-only packages are never resolved in
+  // production (where this function is never called) — a static top-level
+  // import would otherwise crash a production build that omits devDependencies.
+  const { createServer: createViteServer } = await import("vite");
+  const react = (await import("@vitejs/plugin-react")).default;
+  const tailwindcss = (await import("@tailwindcss/vite")).default;
+
+  const rootDir = path.resolve(import.meta.dirname, "../..");
+
   const serverOptions = {
     middlewareMode: true,
     hmr: { server },
@@ -14,7 +21,17 @@ export async function setupVite(app: Express, server: Server) {
   };
 
   const vite = await createViteServer({
-    ...viteConfig,
+    plugins: [react(), tailwindcss()],
+    resolve: {
+      alias: {
+        "@": path.resolve(rootDir, "client", "src"),
+        "@shared": path.resolve(rootDir, "shared"),
+        "@assets": path.resolve(rootDir, "attached_assets"),
+      },
+    },
+    envDir: rootDir,
+    root: path.resolve(rootDir, "client"),
+    publicDir: path.resolve(rootDir, "client", "public"),
     configFile: false,
     server: serverOptions,
     appType: "custom",
