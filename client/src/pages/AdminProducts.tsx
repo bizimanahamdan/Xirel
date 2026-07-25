@@ -37,6 +37,7 @@ export default function AdminProducts() {
         stock: "",
         sku: "",
       });
+      setImageFile(null);
       setShowForm(false);
       refetch();
     },
@@ -59,6 +60,7 @@ export default function AdminProducts() {
         stock: "",
         sku: "",
       });
+      setImageFile(null);
       refetch();
     },
     onError: (error) => {
@@ -80,8 +82,40 @@ export default function AdminProducts() {
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const uploadImageMutation = trpc.products.uploadImage.useMutation();
+
+  function readFileAsBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Strip the "data:...;base64," prefix — the server expects raw base64.
+        resolve(result.split(",")[1] ?? "");
+      };
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    let imageUrl: string | undefined;
+
+    if (imageFile) {
+      try {
+        const base64 = await readFileAsBase64(imageFile);
+        const uploaded = await uploadImageMutation.mutateAsync({
+          imageData: base64,
+          fileName: imageFile.name,
+          contentType: imageFile.type || "image/jpeg",
+        });
+        imageUrl = uploaded.url;
+      } catch (error) {
+        toast.error("Failed to upload image");
+        return;
+      }
+    }
 
     if (editingId) {
       updateProductMutation.mutate({
@@ -92,6 +126,7 @@ export default function AdminProducts() {
         categoryId: parseInt(formData.categoryId) || undefined,
         stock: parseInt(formData.stock) || undefined,
         sku: formData.sku || undefined,
+        ...(imageUrl ? { imageUrl } : {}),
       });
     } else {
       createProductMutation.mutate({
@@ -101,6 +136,7 @@ export default function AdminProducts() {
         categoryId: parseInt(formData.categoryId),
         stock: parseInt(formData.stock),
         sku: formData.sku,
+        ...(imageUrl ? { imageUrl } : {}),
       });
     }
   };
@@ -320,8 +356,12 @@ export default function AdminProducts() {
                 </div>
 
                 <div className="flex gap-4">
-                  <Button type="submit" className="btn-primary">
-                    {editingId ? "Update Product" : "Create Product"}
+                  <Button type="submit" className="btn-primary" disabled={uploadImageMutation.isPending}>
+                    {uploadImageMutation.isPending
+                      ? "Uploading image..."
+                      : editingId
+                        ? "Update Product"
+                        : "Create Product"}
                   </Button>
                   <Button
                     type="button"
