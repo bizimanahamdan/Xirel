@@ -6,9 +6,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
-import { ENV } from "./env";
 import { getDb } from "../db";
-import fs from "node:fs";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -30,20 +28,16 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
-  // Initialize (and, on first run, create) the local SQLite database.
+  // Initialize the database connection (Turso if configured, otherwise a
+  // local SQLite file) and make sure tables exist.
   getDb();
-
-  // Make sure the local uploads directory exists.
-  fs.mkdirSync(ENV.uploadsDir, { recursive: true });
 
   const app = express();
   const server = createServer(app);
-  // Configure body parser with larger size limit for file uploads
+  // Configure body parser with larger size limit for file uploads (images
+  // are sent as base64 and stored as data URIs, so requests can be sizeable)
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
-
-  // Serve locally-uploaded product images.
-  app.use("/uploads", express.static(ENV.uploadsDir));
 
   // tRPC API
   app.use(
