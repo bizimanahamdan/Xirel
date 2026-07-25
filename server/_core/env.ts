@@ -3,9 +3,14 @@ import path from "node:path";
 export const ENV = {
   jwtSecret: process.env.JWT_SECRET ?? "dev-secret-change-me",
   isProduction: process.env.NODE_ENV === "production",
+  // Local file fallback — used automatically when TURSO_DATABASE_URL isn't set,
+  // so the app still runs fully offline with zero configuration.
   databaseFile: process.env.DATABASE_FILE ?? path.resolve(process.cwd(), "data", "store.db"),
-  uploadsDir: process.env.UPLOADS_DIR ?? path.resolve(process.cwd(), "data", "uploads"),
-  // If set, only this exact email can ever become admin via registration.
-  // Leave unset for local/offline use, where "first user wins" is fine.
+  // Set these to use a free hosted Turso (libSQL) database instead — required
+  // for any host whose local filesystem doesn't persist (most free tiers).
+  tursoUrl: process.env.TURSO_DATABASE_URL ?? "",
+  tursoAuthToken: process.env.TURSO_AUTH_TOKEN ?? "",
+  // If set, only this exact email can ever become admin. Leave unset for
+  // local/offline use, where "first user wins" is fine.
   adminEmail: process.env.ADMIN_EMAIL ?? "",
 };
