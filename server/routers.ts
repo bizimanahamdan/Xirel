@@ -214,6 +214,7 @@ export const appRouter = router({
         z.object({
           imageData: z.string(),
           fileName: z.string(),
+          contentType: z.string().optional(),
         })
       )
       .mutation(async ({ input }) => {
@@ -222,7 +223,7 @@ export const appRouter = router({
           const result = await storagePut(
             `products/${input.fileName}`,
             buffer,
-            "image/jpeg"
+            input.contentType || "image/jpeg"
           );
           return result;
         } catch (error) {
