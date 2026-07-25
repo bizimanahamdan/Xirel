@@ -1,37 +1,21 @@
-// Local disk storage — replaces the old S3/Forge-backed storage proxy.
-// Files are written under ENV.uploadsDir and served statically at /uploads/*.
-
-import fs from "node:fs";
-import path from "node:path";
-import crypto from "node:crypto";
-import { ENV } from "./_core/env";
-
-function normalizeKey(relKey: string): string {
-  return relKey.replace(/^\/+/, "");
-}
-
-function appendHashSuffix(relKey: string): string {
-  const hash = crypto.randomUUID().replace(/-/g, "").slice(0, 8);
-  const lastDot = relKey.lastIndexOf(".");
-  if (lastDot === -1) return `${relKey}_${hash}`;
-  return `${relKey.slice(0, lastDot)}_${hash}${relKey.slice(lastDot)}`;
-}
+// Image storage as inline data URIs — stored directly in the database record
+// rather than on local disk. This means product images survive on hosts
+// whose filesystem doesn't persist (most free-tier PaaS), with zero extra
+// service (no S3/Cloudinary account needed). Fine for a small product
+// catalog; swap in real object storage later if you need to host many large
+// images.
 
 export async function storagePut(
-  relKey: string,
+  _relKey: string,
   data: Buffer | Uint8Array | string,
-  _contentType = "application/octet-stream"
+  contentType = "application/octet-stream"
 ): Promise<{ key: string; url: string }> {
-  const key = appendHashSuffix(normalizeKey(relKey));
-  const filePath = path.join(ENV.uploadsDir, key);
-
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, data);
-
-  return { key, url: `/uploads/${key}` };
+  const buffer = typeof data === "string" ? Buffer.from(data) : Buffer.from(data);
+  const dataUrl = `data:${contentType};base64,${buffer.toString("base64")}`;
+  return { key: dataUrl, url: dataUrl };
 }
 
 export async function storageGet(relKey: string): Promise<{ key: string; url: string }> {
-  const key = normalizeKey(relKey);
-  return { key, url: `/uploads/${key}` };
+  // relKey is already the full data URL in this scheme.
+  return { key: relKey, url: relKey };
 }
