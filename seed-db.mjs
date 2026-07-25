@@ -1,20 +1,28 @@
-// Seeds the local SQLite database with sample categories and products.
-// Run with: npm run seed  (after `npm run dev` has created the DB at least once,
-// or this script will create the tables itself).
+// Seeds the database with sample categories and products.
+// Works against either a local SQLite file (default) or a hosted Turso
+// database (if TURSO_DATABASE_URL is set) — same code path either way.
+//
+// Run with: npm run seed
 
-import Database from "better-sqlite3";
+import { createClient } from "@libsql/client";
 import fs from "node:fs";
 import path from "node:path";
 import "dotenv/config";
 
+const tursoUrl = process.env.TURSO_DATABASE_URL ?? "";
+const tursoAuthToken = process.env.TURSO_AUTH_TOKEN ?? "";
 const databaseFile =
   process.env.DATABASE_FILE ?? path.resolve(process.cwd(), "data", "store.db");
 
-fs.mkdirSync(path.dirname(databaseFile), { recursive: true });
-const db = new Database(databaseFile);
-db.pragma("journal_mode = WAL");
+if (!tursoUrl) {
+  fs.mkdirSync(path.dirname(databaseFile), { recursive: true });
+}
 
-db.exec(`
+const client = tursoUrl
+  ? createClient({ url: tursoUrl, authToken: tursoAuthToken || undefined })
+  : createClient({ url: `file:${databaseFile}` });
+
+await client.executeMultiple(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email TEXT NOT NULL UNIQUE,
@@ -83,7 +91,9 @@ db.exec(`
   );
 `);
 
-const categoryCount = db.prepare("SELECT COUNT(*) AS count FROM categories").get().count;
+const categoryCountResult = await client.execute("SELECT COUNT(*) AS count FROM categories");
+const categoryCount = Number(categoryCountResult.rows[0].count);
+
 if (categoryCount > 0) {
   console.log("Database already has categories — skipping seed (nothing to do).");
   process.exit(0);
@@ -91,26 +101,27 @@ if (categoryCount > 0) {
 
 console.log("Seeding database...");
 
-const insertCategory = db.prepare(
-  "INSERT INTO categories (name, slug, description) VALUES (?, ?, ?)"
-);
-const electronicsId = insertCategory.run(
-  "Electronics",
-  "electronics",
-  "Premium electronic devices and gadgets"
-).lastInsertRowid;
-const outfitsId = insertCategory.run(
-  "Outfits",
-  "outfits",
-  "Stylish clothing and fashion items"
-).lastInsertRowid;
+const electronicsResult = await client.execute({
+  sql: "INSERT INTO categories (name, slug, description) VALUES (?, ?, ?)",
+  args: ["Electronics", "electronics", "Premium electronic devices and gadgets"],
+});
+const electronicsId = Number(electronicsResult.lastInsertRowid);
+
+const outfitsResult = await client.execute({
+  sql: "INSERT INTO categories (name, slug, description) VALUES (?, ?, ?)",
+  args: ["Outfits", "outfits", "Stylish clothing and fashion items"],
+});
+const outfitsId = Number(outfitsResult.lastInsertRowid);
 
 console.log("✓ Categories created");
 
-const insertProduct = db.prepare(`
-  INSERT INTO products (name, description, price, categoryId, stock, sku, isActive)
-  VALUES (?, ?, ?, ?, ?, ?, 1)
-`);
+const insertProduct = async (name, description, price, categoryId, stock, sku) => {
+  await client.execute({
+    sql: `INSERT INTO products (name, description, price, categoryId, stock, sku, isActive)
+          VALUES (?, ?, ?, ?, ?, ?, 1)`,
+    args: [name, description, price, categoryId, stock, sku],
+  });
+};
 
 const electronicsProducts = [
   ["Premium Wireless Headphones", "High-quality noise-cancelling wireless headphones with 30-hour battery life", "199.99", 50, "ELEC-001"],
@@ -121,7 +132,7 @@ const electronicsProducts = [
 ];
 
 for (const [name, description, price, stock, sku] of electronicsProducts) {
-  insertProduct.run(name, description, price, electronicsId, stock, sku);
+  await insertProduct(name, description, price, electronicsId, stock, sku);
 }
 
 console.log("✓ Electronics products created");
@@ -135,12 +146,12 @@ const outfitsProducts = [
 ];
 
 for (const [name, description, price, stock, sku] of outfitsProducts) {
-  insertProduct.run(name, description, price, outfitsId, stock, sku);
+  await insertProduct(name, description, price, outfitsId, stock, sku);
 }
 
 console.log("✓ Outfits products created");
 
-db.prepare("INSERT INTO paymentSettings (stripeEnabled, paypalEnabled) VALUES (0, 0)").run();
+await client.execute("INSERT INTO paymentSettings (stripeEnabled, paypalEnabled) VALUES (0, 0)");
 
 console.log("✓ Payment settings initialized");
 console.log("\n✅ Database seeded successfully!");
