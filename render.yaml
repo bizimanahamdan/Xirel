@@ -2,7 +2,7 @@ services:
   - type: web
     name: xirel
     env: docker
-    plan: starter # Render's free plan doesn't support persistent disks — Starter (~$7/mo) is the cheapest that does
+    plan: free
     envVars:
       - key: NODE_ENV
         value: production
@@ -10,7 +10,7 @@ services:
         generateValue: true
       - key: ADMIN_EMAIL
         sync: false
-    disk:
-      name: store-data
-      mountPath: /data
-      sizeGB: 1
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
