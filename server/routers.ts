@@ -10,6 +10,7 @@ import { TRPCError } from "@trpc/server";
 import { notifyOwner } from "./_core/notification";
 import Stripe from "stripe";
 import { storagePut } from "./storage";
+import { parseUserAgent } from "./_core/userAgent";
 
 // Helper to check admin role
 const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
@@ -524,6 +525,52 @@ export const appRouter = router({
       )
       .mutation(async ({ input }) => {
         return await db.updatePaymentSettings(input);
+      }),
+  }),
+
+  analytics: router({
+    // Public: any visitor's browser fires this. Device/browser/OS are
+    // derived server-side from the real request header, not trusted client
+    // input, so this can't be spoofed to pollute the numbers.
+    track: publicProcedure
+      .input(
+        z.object({
+          eventType: z.enum(["page_view", "search", "category_view"]),
+          path: z.string(),
+          query: z.string().optional(),
+          categorySlug: z.string().optional(),
+          resultCount: z.number().int().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const userAgent = ctx.req.headers["user-agent"];
+        const { device, browser, os } = parseUserAgent(userAgent);
+
+        await db.logAnalyticsEvent({
+          eventType: input.eventType,
+          path: input.path,
+          query: input.query ?? null,
+          categorySlug: input.categorySlug ?? null,
+          resultCount: input.resultCount ?? null,
+          device,
+          browser,
+          os,
+          userAgent: userAgent ?? null,
+        });
+
+        return { success: true } as const;
+      }),
+
+    summary: adminProcedure
+      .input(z.object({ days: z.number().int().min(1).max(365).optional() }).optional())
+      .query(async ({ input }) => {
+        return await db.getAnalyticsSummary(input?.days ?? 30);
+      }),
+
+    emptyResults: adminProcedure
+      .input(z.object({ days: z.number().int().min(1).max(365).optional() }).optional())
+      .query(async ({ input }) => {
+        return await db.getEmptyResultEvents(input?.days ?? 30);
       }),
   }),
 });
