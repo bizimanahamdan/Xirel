@@ -18,6 +18,7 @@ import AdminPaymentSettings from "@/pages/AdminPaymentSettings";
 import AdminAnalytics from "@/pages/AdminAnalytics";
 import Orders from "@/pages/Orders";
 import Login from "@/pages/Login";
+import Account from "@/pages/Account";
 import { useAnalyticsTracker } from "@/_core/hooks/useAnalyticsTracker";
 
 /** Fires a page_view analytics event on every route change. Rendered once,
@@ -47,6 +48,7 @@ function Router() {
         <Route path={"/checkout"} component={Checkout} />
         <Route path={"/orders"} component={Orders} />
         <Route path={"/login"} component={Login} />
+        <Route path={"/account"} component={Account} />
         <Route path={"/admin"} component={AdminDashboard} />
         <Route path={"/admin/products"} component={AdminProducts} />
         <Route path={"/admin/orders"} component={AdminOrders} />
