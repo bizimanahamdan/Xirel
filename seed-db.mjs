@@ -89,6 +89,20 @@ await client.executeMultiple(`
     paypalEnabled INTEGER NOT NULL DEFAULT 0,
     updatedAt INTEGER NOT NULL DEFAULT (unixepoch())
   );
+
+  CREATE TABLE IF NOT EXISTS analyticsEvents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    eventType TEXT NOT NULL,
+    path TEXT NOT NULL,
+    query TEXT,
+    categorySlug TEXT,
+    resultCount INTEGER,
+    device TEXT NOT NULL DEFAULT 'unknown',
+    browser TEXT NOT NULL DEFAULT 'unknown',
+    os TEXT NOT NULL DEFAULT 'unknown',
+    userAgent TEXT,
+    createdAt INTEGER NOT NULL DEFAULT (unixepoch())
+  );
 `);
 
 const categoryCountResult = await client.execute("SELECT COUNT(*) AS count FROM categories");
