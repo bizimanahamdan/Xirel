@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -34,14 +34,18 @@ export default function Products() {
     maxPrice: maxPrice,
   });
 
-  // Set category from URL param
-  const categoryId = useMemo(() => {
+  // Sync the selected category from the URL param (e.g. a "Electronics" card
+  // link from the home page) into the state that actually drives the query.
+  // Previously this was computed into an unused variable and never applied,
+  // so category links from elsewhere in the site silently did nothing.
+  useEffect(() => {
     if (categoryParam && categories) {
       const cat = categories.find((c) => c.slug === categoryParam);
-      return cat?.id;
+      if (cat) {
+        setSelectedCategory(cat.id);
+      }
     }
-    return selectedCategory;
-  }, [categoryParam, categories, selectedCategory]);
+  }, [categoryParam, categories]);
 
   const sortedProducts = useMemo(() => {
     if (!products) return [];
