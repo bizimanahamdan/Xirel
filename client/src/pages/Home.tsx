@@ -6,7 +6,6 @@ import { trpc } from "@/lib/trpc";
 import { ShoppingBag, Zap, Shirt, ArrowRight } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Logo } from "@/components/Logo";
-import HeroScene from "@/components/HeroScene";
 
 export default function Home() {
   const { user, isAuthenticated } = useAuth();
@@ -100,12 +99,59 @@ export default function Home() {
               </div>
             </div>
 
-            {/* 3D animated scene replaces the static icon grid */}
-            <div className="relative h-96 md:h-[28rem]">
-              <HeroScene />
+            {/* CSS-only 3D rotating showcase — no libraries required */}
+            <div className="relative h-96 md:h-full flex items-center justify-center [perspective:1200px]">
+              <div className="absolute inset-0 bg-gradient-to-br from-accent-rose/20 to-transparent rounded-3xl blur-3xl"></div>
+
+              <div className="hero-3d-stage relative w-64 h-64 [transform-style:preserve-3d]">
+                <div className="hero-3d-card hero-3d-card--1 absolute inset-0 bg-white rounded-2xl shadow-xl border border-border flex items-center justify-center">
+                  <Zap className="w-16 h-16 text-accent-rose" />
+                </div>
+                <div className="hero-3d-card hero-3d-card--2 absolute inset-0 bg-white rounded-2xl shadow-xl border border-border flex items-center justify-center">
+                  <Shirt className="w-16 h-16 text-accent-rose" />
+                </div>
+                <div className="hero-3d-card hero-3d-card--3 absolute inset-0 bg-white rounded-2xl shadow-xl border border-border flex items-center justify-center">
+                  <ShoppingBag className="w-16 h-16 text-accent-rose" />
+                </div>
+              </div>
             </div>
           </div>
         </div>
+
+        <style>{`
+          .hero-3d-stage {
+            animation: hero-stage-spin 12s linear infinite;
+          }
+          .hero-3d-card {
+            backface-visibility: hidden;
+            animation: hero-card-float 4s ease-in-out infinite;
+          }
+          .hero-3d-card--1 {
+            transform: translateZ(60px) rotateY(0deg);
+            animation-delay: 0s;
+          }
+          .hero-3d-card--2 {
+            transform: rotateY(120deg) translateZ(60px);
+            animation-delay: 1.3s;
+          }
+          .hero-3d-card--3 {
+            transform: rotateY(240deg) translateZ(60px);
+            animation-delay: 2.6s;
+          }
+          @keyframes hero-stage-spin {
+            from { transform: rotateY(0deg) rotateX(8deg); }
+            to { transform: rotateY(360deg) rotateX(8deg); }
+          }
+          @keyframes hero-card-float {
+            0%, 100% { margin-top: 0px; }
+            50% { margin-top: -14px; }
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .hero-3d-stage, .hero-3d-card {
+              animation: none;
+            }
+          }
+        `}</style>
       </section>
 
       {/* Categories Section */}
@@ -315,4 +361,5 @@ export default function Home() {
       </footer>
     </div>
   );
-}
+                                                         }
+                          
