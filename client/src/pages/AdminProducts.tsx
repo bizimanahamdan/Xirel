@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -22,9 +22,51 @@ export default function AdminProducts() {
     sku: "",
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [showCategoryForm, setShowCategoryForm] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
 
   const { data: products, refetch } = trpc.products.list.useQuery({});
-  const { data: categories } = trpc.categories.list.useQuery();
+  const { data: categories, refetch: refetchCategories } = trpc.categories.list.useQuery();
+
+  const createCategoryMutation = trpc.categories.create.useMutation({
+    onSuccess: () => {
+      toast.success("Category created");
+      setNewCategoryName("");
+      setShowCategoryForm(false);
+      refetchCategories();
+    },
+    onError: (error) => {
+      toast.error("Failed to create category", { description: error.message });
+    },
+  });
+
+  function slugify(name: string) {
+    return name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
+  }
+
+  const handleCreateCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = newCategoryName.trim();
+    if (!name) return;
+    createCategoryMutation.mutate({ name, slug: slugify(name) });
+  };
+
+  // Once real categories exist, point the (new-product) form at a real one
+  // instead of the placeholder "1" default, which may not correspond to any
+  // actual category.
+  useEffect(() => {
+    if (!showForm || editingId) return;
+    if (!categories?.length) return;
+    const isValid = categories.some((c) => c.id.toString() === formData.categoryId);
+    if (!isValid) {
+      setFormData((prev) => ({ ...prev, categoryId: categories[0].id.toString() }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categories, showForm, editingId]);
 
   const createProductMutation = trpc.products.create.useMutation({
     onSuccess: () => {
@@ -241,6 +283,57 @@ export default function AdminProducts() {
             </Button>
           </div>
 
+          {/* Category Management */}
+          <Card className="p-6 mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-xl font-bold mb-1">Categories</h2>
+                <p className="text-sm text-muted-foreground">
+                  Products need a category to be created — add one here first if the list below is empty.
+                </p>
+              </div>
+              <Button
+                onClick={() => setShowCategoryForm(!showCategoryForm)}
+                className="flex items-center gap-2"
+                variant="outline"
+              >
+                <Plus className="w-4 h-4" />
+                Add Category
+              </Button>
+            </div>
+
+            {showCategoryForm && (
+              <form onSubmit={handleCreateCategory} className="flex gap-3 mb-4">
+                <Input
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="e.g. Electronics"
+                  required
+                />
+                <Button type="submit" disabled={createCategoryMutation.isPending}>
+                  {createCategoryMutation.isPending ? "Adding..." : "Save"}
+                </Button>
+              </form>
+            )}
+
+            <div className="flex flex-wrap gap-2">
+              {categories?.length ? (
+                categories.map((cat) => (
+                  <span
+                    key={cat.id}
+                    className="px-3 py-1 rounded-full bg-secondary text-sm font-medium"
+                  >
+                    {cat.name}
+                  </span>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No categories yet — add one above (e.g. "Electronics", "Outfits").
+                </p>
+              )}
+            </div>
+          </Card>
+
           {/* Add/Edit Form */}
           {showForm && (
             <Card className="p-6 mb-8">
@@ -273,7 +366,13 @@ export default function AdminProducts() {
                         setFormData({ ...formData, categoryId: e.target.value })
                       }
                       className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+                      required
                     >
+                      {!categories?.length && (
+                        <option value="" disabled>
+                          Add a category above first
+                        </option>
+                      )}
                       {categories?.map((cat) => (
                         <option key={cat.id} value={cat.id}>
                           {cat.name}
