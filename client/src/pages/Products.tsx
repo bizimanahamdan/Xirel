@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { ShoppingBag, Search, ArrowRight } from "lucide-react";
 import { Logo } from "@/components/Logo";
+import { useAnalyticsTracker } from "@/_core/hooks/useAnalyticsTracker";
 
 export default function Products() {
   const [location] = useLocation();
@@ -46,6 +47,25 @@ export default function Products() {
       }
     }
   }, [categoryParam, categories]);
+
+  const { trackSearch, trackCategoryView } = useAnalyticsTracker();
+
+  // Log search/category-view events (including zero-result ones) once the
+  // query has actually resolved, so the admin can see what customers looked
+  // for and came up empty on.
+  useEffect(() => {
+    if (!products || isLoading) return;
+
+    if (search) {
+      trackSearch(location, search, products.length);
+    } else if (selectedCategory && categories) {
+      const cat = categories.find((c) => c.id === selectedCategory);
+      if (cat) {
+        trackCategoryView(location, cat.slug, products.length);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products, isLoading, search, selectedCategory]);
 
   const sortedProducts = useMemo(() => {
     if (!products) return [];
