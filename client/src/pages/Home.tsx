@@ -6,6 +6,7 @@ import { trpc } from "@/lib/trpc";
 import { ShoppingBag, Zap, Shirt, ArrowRight } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Logo } from "@/components/Logo";
+import HeroScene from "@/components/HeroScene";
 
 export default function Home() {
   const { user, isAuthenticated } = useAuth();
@@ -99,16 +100,9 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="relative h-96 md:h-full flex items-center justify-center">
-              <div className="absolute inset-0 bg-gradient-to-br from-accent-rose/20 to-transparent rounded-3xl blur-3xl"></div>
-              <div className="relative grid grid-cols-2 gap-4">
-                <div className="bg-white rounded-2xl p-8 shadow-lg border border-border flex items-center justify-center h-40">
-                  <Zap className="w-16 h-16 text-accent-rose" />
-                </div>
-                <div className="bg-white rounded-2xl p-8 shadow-lg border border-border flex items-center justify-center h-40">
-                  <Shirt className="w-16 h-16 text-accent-rose" />
-                </div>
-              </div>
+            {/* 3D animated scene replaces the static icon grid */}
+            <div className="relative h-96 md:h-[28rem]">
+              <HeroScene />
             </div>
           </div>
         </div>
