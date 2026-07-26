@@ -150,3 +150,30 @@ export const paymentSettings = sqliteTable("paymentSettings", {
 
 export type PaymentSettings = typeof paymentSettings.$inferSelect;
 export type InsertPaymentSettings = typeof paymentSettings.$inferInsert;
+
+/**
+ * Lightweight, anonymous analytics: one row per page view, search, or
+ * category view. `resultCount` is null for plain page views, and the actual
+ * product count for search/category_view events — a resultCount of 0 is a
+ * "customer found nothing" event, which the admin analytics page highlights.
+ */
+export const analyticsEvents = sqliteTable("analyticsEvents", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  eventType: text("eventType", { enum: ["page_view", "search", "category_view"] }).notNull(),
+  path: text("path").notNull(),
+  query: text("query"),
+  categorySlug: text("categorySlug"),
+  resultCount: integer("resultCount"),
+  device: text("device", { enum: ["mobile", "tablet", "desktop", "unknown"] })
+    .notNull()
+    .default("unknown"),
+  browser: text("browser").notNull().default("unknown"),
+  os: text("os").notNull().default("unknown"),
+  userAgent: text("userAgent"),
+  createdAt: integer("createdAt", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
+export type InsertAnalyticsEvent = typeof analyticsEvents.$inferInsert;
