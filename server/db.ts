@@ -1,4 +1,4 @@
-import { eq, and, like, gte, lte, desc } from "drizzle-orm";
+import { eq, and, like, gte, lte, desc, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
 import { createClient } from "@libsql/client";
 import fs from "node:fs";
@@ -10,6 +10,7 @@ import {
   cartItems,
   orders,
   paymentSettings,
+  analyticsEvents,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -115,6 +116,20 @@ function ensureSchema(client: ReturnType<typeof createClient>): Promise<void> {
       stripeEnabled INTEGER NOT NULL DEFAULT 0,
       paypalEnabled INTEGER NOT NULL DEFAULT 0,
       updatedAt INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+
+    CREATE TABLE IF NOT EXISTS analyticsEvents (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      eventType TEXT NOT NULL,
+      path TEXT NOT NULL,
+      query TEXT,
+      categorySlug TEXT,
+      resultCount INTEGER,
+      device TEXT NOT NULL DEFAULT 'unknown',
+      browser TEXT NOT NULL DEFAULT 'unknown',
+      os TEXT NOT NULL DEFAULT 'unknown',
+      userAgent TEXT,
+      createdAt INTEGER NOT NULL DEFAULT (unixepoch())
     );
   `).then(() => undefined);
 
@@ -416,4 +431,111 @@ export async function updatePaymentSettings(
 
   const [row] = await db.insert(paymentSettings).values(data).returning();
   return row ?? null;
+}
+
+// ============ ANALYTICS ============
+
+export async function logAnalyticsEvent(data: {
+  eventType: "page_view" | "search" | "category_view";
+  path: string;
+  query?: string | null;
+  categorySlug?: string | null;
+  resultCount?: number | null;
+  device: "mobile" | "tablet" | "desktop" | "unknown";
+  browser: string;
+  os: string;
+  userAgent?: string | null;
+}) {
+  const db = await ready();
+  await db.insert(analyticsEvents).values(data);
+}
+
+/** High-level counts for the admin analytics dashboard, covering the last N days. */
+export async function getAnalyticsSummary(days = 30) {
+  const db = await ready();
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+  const totalViews = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(analyticsEvents)
+    .where(and(eq(analyticsEvents.eventType, "page_view"), gte(analyticsEvents.createdAt, since)));
+
+  const byDevice = await db
+    .select({ device: analyticsEvents.device, count: sql<number>`count(*)` })
+    .from(analyticsEvents)
+    .where(gte(analyticsEvents.createdAt, since))
+    .groupBy(analyticsEvents.device);
+
+  const byBrowser = await db
+    .select({ browser: analyticsEvents.browser, count: sql<number>`count(*)` })
+    .from(analyticsEvents)
+    .where(gte(analyticsEvents.createdAt, since))
+    .groupBy(analyticsEvents.browser)
+    .orderBy(desc(sql`count(*)`));
+
+  const byOs = await db
+    .select({ os: analyticsEvents.os, count: sql<number>`count(*)` })
+    .from(analyticsEvents)
+    .where(gte(analyticsEvents.createdAt, since))
+    .groupBy(analyticsEvents.os)
+    .orderBy(desc(sql`count(*)`));
+
+  const topPaths = await db
+    .select({ path: analyticsEvents.path, count: sql<number>`count(*)` })
+    .from(analyticsEvents)
+    .where(and(eq(analyticsEvents.eventType, "page_view"), gte(analyticsEvents.createdAt, since)))
+    .groupBy(analyticsEvents.path)
+    .orderBy(desc(sql`count(*)`))
+    .limit(10);
+
+  return {
+    totalViews: Number(totalViews[0]?.count ?? 0),
+    byDevice: byDevice.map(r => ({ device: r.device, count: Number(r.count) })),
+    byBrowser: byBrowser.map(r => ({ browser: r.browser, count: Number(r.count) })),
+    byOs: byOs.map(r => ({ os: r.os, count: Number(r.count) })),
+    topPaths: topPaths.map(r => ({ path: r.path, count: Number(r.count) })),
+  };
+}
+
+/** Search terms and category views that came up empty — the actionable
+ * "customers looked for X and found nothing" list. */
+export async function getEmptyResultEvents(days = 30) {
+  const db = await ready();
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+  const emptySearches = await db
+    .select({ query: analyticsEvents.query, count: sql<number>`count(*)` })
+    .from(analyticsEvents)
+    .where(
+      and(
+        eq(analyticsEvents.eventType, "search"),
+        eq(analyticsEvents.resultCount, 0),
+        gte(analyticsEvents.createdAt, since)
+      )
+    )
+    .groupBy(analyticsEvents.query)
+    .orderBy(desc(sql`count(*)`))
+    .limit(50);
+
+  const emptyCategoryViews = await db
+    .select({ categorySlug: analyticsEvents.categorySlug, count: sql<number>`count(*)` })
+    .from(analyticsEvents)
+    .where(
+      and(
+        eq(analyticsEvents.eventType, "category_view"),
+        eq(analyticsEvents.resultCount, 0),
+        gte(analyticsEvents.createdAt, since)
+      )
+    )
+    .groupBy(analyticsEvents.categorySlug)
+    .orderBy(desc(sql`count(*)`))
+    .limit(50);
+
+  return {
+    emptySearches: emptySearches.map(r => ({ query: r.query ?? "(empty)", count: Number(r.count) })),
+    emptyCategoryViews: emptyCategoryViews.map(r => ({
+      categorySlug: r.categorySlug ?? "(unknown)",
+      count: Number(r.count),
+    })),
+  };
 }
