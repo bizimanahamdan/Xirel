@@ -131,9 +131,6 @@ export default function Login() {
                 <Button type="submit" className="w-full" disabled={isRegistering}>
                   {isRegistering ? "Creating account..." : "Create Account"}
                 </Button>
-                <p className="text-xs text-muted-foreground text-center">
-                  The first account created becomes the store admin.
-                </p>
               </form>
             </TabsContent>
           </Tabs>
