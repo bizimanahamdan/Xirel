@@ -13,4 +13,11 @@ export const ENV = {
   // If set, only this exact email can ever become admin. Leave unset for
   // local/offline use, where "first user wins" is fine.
   adminEmail: process.env.ADMIN_EMAIL ?? "",
+  // Optional: real image hosting via Cloudinary. If any of these are unset,
+  // storage.ts falls back to storing images as inline base64 data URIs
+  // directly in the database — works with zero setup, but bloats the DB and
+  // page size, so Cloudinary is recommended for a real deployment.
+  cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME ?? "",
+  cloudinaryApiKey: process.env.CLOUDINARY_API_KEY ?? "",
+  cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET ?? "",
 };
