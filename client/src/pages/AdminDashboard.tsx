@@ -31,6 +31,7 @@ export default function AdminDashboard() {
   const { data: orders } = trpc.orders.getAllOrders.useQuery();
   const { data: products } = trpc.products.list.useQuery({});
   const { data: users } = trpc.users.list.useQuery();
+  const { data: status } = trpc.system.status.useQuery();
 
   // Calculate statistics
   const totalRevenue = orders?.reduce(
@@ -163,6 +164,29 @@ export default function AdminDashboard() {
               Welcome to your e-commerce admin panel
             </p>
           </div>
+
+          {status && (
+            <div
+              className={`mb-8 p-4 rounded-lg border text-sm flex flex-wrap gap-x-6 gap-y-1 ${
+                status.database === "turso"
+                  ? "bg-green-50 border-green-200 text-green-900"
+                  : "bg-yellow-50 border-yellow-200 text-yellow-900"
+              }`}
+            >
+              <span>
+                <strong>Database:</strong>{" "}
+                {status.database === "turso"
+                  ? "Turso (connected — data persists across redeploys)"
+                  : "Local file (⚠️ data will be WIPED on next redeploy — set TURSO_DATABASE_URL / TURSO_AUTH_TOKEN)"}
+              </span>
+              <span>
+                <strong>Image storage:</strong>{" "}
+                {status.imageStorage === "cloudinary"
+                  ? "Cloudinary (connected)"
+                  : "Inline database storage (set CLOUDINARY_* env vars to switch)"}
+              </span>
+            </div>
+          )}
 
           {/* Statistics Cards */}
           <div className="grid md:grid-cols-4 gap-6 mb-8">
