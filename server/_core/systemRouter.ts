@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { notifyOwner } from "./notification";
 import { adminProcedure, publicProcedure, router } from "./trpc";
+import { ENV } from "./env";
 
 export const systemRouter = router({
   health: publicProcedure
@@ -12,6 +13,17 @@ export const systemRouter = router({
     .query(() => ({
       ok: true,
     })),
+
+  // Reports which backends are actually active — useful for confirming a
+  // deployment is really using Turso/Cloudinary rather than silently
+  // falling back to local storage that won't survive a redeploy.
+  status: adminProcedure.query(() => ({
+    database: ENV.tursoUrl ? ("turso" as const) : ("local-file" as const),
+    imageStorage:
+      ENV.cloudinaryCloudName && ENV.cloudinaryApiKey && ENV.cloudinaryApiSecret
+        ? ("cloudinary" as const)
+        : ("inline-data-uri" as const),
+  })),
 
   notifyOwner: adminProcedure
     .input(
