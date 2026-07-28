@@ -48,6 +48,7 @@
     "bcryptjs": "^2.4.3",
     "@libsql/client": "^0.14.0",
     "class-variance-authority": "^0.7.1",
+    "cloudinary": "^2.5.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "cookie": "^1.0.2",
