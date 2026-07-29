@@ -3,9 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { ShoppingBag, Zap, Shirt, ArrowRight } from "lucide-react";
+import { ShoppingBag, Zap, Shirt, ArrowRight, Instagram } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Logo } from "@/components/Logo";
+import { INSTAGRAM_URL, X_URL } from "@/const";
 
 export default function Home() {
   const { user, isAuthenticated } = useAuth();
@@ -99,59 +100,19 @@ export default function Home() {
               </div>
             </div>
 
-            {/* CSS-only 3D rotating showcase — no libraries required */}
-            <div className="relative h-96 md:h-full flex items-center justify-center [perspective:1200px]">
+            <div className="relative h-96 md:h-full flex items-center justify-center">
               <div className="absolute inset-0 bg-gradient-to-br from-accent-rose/20 to-transparent rounded-3xl blur-3xl"></div>
-
-              <div className="hero-3d-stage relative w-64 h-64 [transform-style:preserve-3d]">
-                <div className="hero-3d-card hero-3d-card--1 absolute inset-0 bg-white rounded-2xl shadow-xl border border-border flex items-center justify-center">
+              <div className="relative grid grid-cols-2 gap-4">
+                <div className="bg-white rounded-2xl p-8 shadow-lg border border-border flex items-center justify-center h-40">
                   <Zap className="w-16 h-16 text-accent-rose" />
                 </div>
-                <div className="hero-3d-card hero-3d-card--2 absolute inset-0 bg-white rounded-2xl shadow-xl border border-border flex items-center justify-center">
+                <div className="bg-white rounded-2xl p-8 shadow-lg border border-border flex items-center justify-center h-40">
                   <Shirt className="w-16 h-16 text-accent-rose" />
-                </div>
-                <div className="hero-3d-card hero-3d-card--3 absolute inset-0 bg-white rounded-2xl shadow-xl border border-border flex items-center justify-center">
-                  <ShoppingBag className="w-16 h-16 text-accent-rose" />
                 </div>
               </div>
             </div>
           </div>
         </div>
-
-        <style>{`
-          .hero-3d-stage {
-            animation: hero-stage-spin 12s linear infinite;
-          }
-          .hero-3d-card {
-            backface-visibility: hidden;
-            animation: hero-card-float 4s ease-in-out infinite;
-          }
-          .hero-3d-card--1 {
-            transform: translateZ(60px) rotateY(0deg);
-            animation-delay: 0s;
-          }
-          .hero-3d-card--2 {
-            transform: rotateY(120deg) translateZ(60px);
-            animation-delay: 1.3s;
-          }
-          .hero-3d-card--3 {
-            transform: rotateY(240deg) translateZ(60px);
-            animation-delay: 2.6s;
-          }
-          @keyframes hero-stage-spin {
-            from { transform: rotateY(0deg) rotateX(8deg); }
-            to { transform: rotateY(360deg) rotateX(8deg); }
-          }
-          @keyframes hero-card-float {
-            0%, 100% { margin-top: 0px; }
-            50% { margin-top: -14px; }
-          }
-          @media (prefers-reduced-motion: reduce) {
-            .hero-3d-stage, .hero-3d-card {
-              animation: none;
-            }
-          }
-        `}</style>
       </section>
 
       {/* Categories Section */}
@@ -341,25 +302,58 @@ export default function Home() {
               <h4 className="text-lg font-bold mb-4">Support</h4>
               <ul className="space-y-2 text-sm text-gray-300">
                 <li>
-                  <a href="#" className="hover:text-white transition-colors">
-                    Contact Us
-                  </a>
+                  <Link href="/support">
+                    <span className="hover:text-white transition-colors cursor-pointer">Contact Us</span>
+                  </Link>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-white transition-colors">
-                    FAQ
-                  </a>
+                  <Link href="/faq">
+                    <span className="hover:text-white transition-colors cursor-pointer">FAQ</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/returns">
+                    <span className="hover:text-white transition-colors cursor-pointer">Return Policy</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/privacy-policy">
+                    <span className="hover:text-white transition-colors cursor-pointer">Privacy Policy</span>
+                  </Link>
                 </li>
               </ul>
             </div>
           </div>
 
-          <div className="border-t border-gray-700 pt-8 text-center text-sm text-gray-300">
-            <p>&copy; {new Date().getFullYear()} Xirel. All rights reserved.</p>
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 border-t border-gray-700 pt-8">
+            <p className="text-sm text-gray-300">
+              &copy; {new Date().getFullYear()} Xirel. All rights reserved.
+            </p>
+            <div className="flex items-center gap-4">
+              <a
+                href={INSTAGRAM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Xirel on Instagram"
+                className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
+              >
+                <Instagram className="w-4 h-4" />
+              </a>
+              <a
+                href={X_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Xirel on X"
+                className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
+              >
+                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor" aria-hidden="true">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                </svg>
+              </a>
+            </div>
           </div>
         </div>
       </footer>
     </div>
   );
-                                                         }
-                          
+}
