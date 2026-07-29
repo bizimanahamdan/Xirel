@@ -20,4 +20,8 @@ export const ENV = {
   cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME ?? "",
   cloudinaryApiKey: process.env.CLOUDINARY_API_KEY ?? "",
   cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET ?? "",
+  // Optional: powers the AI support chat on the Support page. Get a free key
+  // (no credit card) at console.groq.com. If unset, the chat widget shows a
+  // "not available yet, use WhatsApp" message instead of erroring.
+  groqApiKey: process.env.GROQ_API_KEY ?? "",
 };
