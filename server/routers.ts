@@ -11,6 +11,7 @@ import { notifyOwner } from "./_core/notification";
 import Stripe from "stripe";
 import { storagePut } from "./storage";
 import { parseUserAgent } from "./_core/userAgent";
+import { getChatbotReply, type ChatMessage } from "./_core/supportChat";
 
 // Helper to check admin role
 const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
@@ -571,6 +572,27 @@ export const appRouter = router({
       .input(z.object({ days: z.number().int().min(1).max(365).optional() }).optional())
       .query(async ({ input }) => {
         return await db.getEmptyResultEvents(input?.days ?? 30);
+      }),
+  }),
+
+  support: router({
+    chat: publicProcedure
+      .input(
+        z.object({
+          messages: z
+            .array(
+              z.object({
+                role: z.enum(["user", "assistant"]),
+                content: z.string().min(1).max(2000),
+              })
+            )
+            .min(1)
+            .max(20),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const reply = await getChatbotReply(input.messages as ChatMessage[]);
+        return { reply };
       }),
   }),
 });
