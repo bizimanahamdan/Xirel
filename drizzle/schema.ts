@@ -119,6 +119,9 @@ export const orders = sqliteTable("orders", {
   }>(),
   paymentMethod: text("paymentMethod"),
   stripePaymentIntentId: text("stripePaymentIntentId"),
+  // Generic external payment reference — e.g. an MTN MoMo requestToPay
+  // referenceId, used to poll/confirm payment status.
+  paymentReference: text("paymentReference"),
   items: text("items", { mode: "json" }).$type<
     Array<{
       productId: number;
