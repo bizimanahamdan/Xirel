@@ -299,6 +299,31 @@ export default function AdminOrders() {
                       </div>
                     </div>
 
+                    {selectedOrder.fulfillments?.length > 0 && (
+                      <div className="border-t border-border pt-4">
+                        <p className="text-sm text-muted-foreground mb-3">Dropship Fulfillment</p>
+                        <div className="space-y-2">
+                          {selectedOrder.fulfillments.map((f: any, idx: number) => (
+                            <div
+                              key={idx}
+                              className={`text-sm px-3 py-2 rounded-lg ${
+                                f.status === "placed"
+                                  ? "bg-green-50 text-green-900"
+                                  : "bg-red-50 text-red-900"
+                              }`}
+                            >
+                              <span className="font-medium capitalize">{f.provider}</span>
+                              {f.status === "placed" ? (
+                                <span> — order placed (#{f.externalOrderId})</span>
+                              ) : (
+                                <span> — failed: {f.error}</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     <div className="border-t border-border pt-4">
                       <p className="text-sm text-muted-foreground mb-1">
                         Order Date
