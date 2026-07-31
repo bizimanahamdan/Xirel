@@ -14,6 +14,7 @@ import { parseUserAgent } from "./_core/userAgent";
 import { getChatbotReply, type ChatMessage } from "./_core/supportChat";
 import { tryAutoFulfill } from "./_core/fulfillment";
 import * as printify from "./_core/printify";
+import * as momo from "./_core/momo";
 
 // Helper to check admin role
 const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
@@ -673,6 +674,68 @@ export const appRouter = router({
             dropshipProductId: input.productId,
             dropshipVariantId: input.variantId.toString(),
           });
+        }),
+    }),
+  }),
+
+  payments: router({
+    momo: router({
+      // Public: the checkout page needs to know whether to show the MoMo
+      // flow or fall back to "we'll confirm payment manually" messaging.
+      status: publicProcedure.query(() => ({
+        configured: momo.isMomoConfigured(),
+      })),
+
+      requestToPay: protectedProcedure
+        .input(z.object({ orderId: z.number(), phone: z.string().min(6) }))
+        .mutation(async ({ ctx, input }) => {
+          const order = await db.getOrderById(input.orderId);
+          if (!order || order.userId !== ctx.user.id) {
+            throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+          }
+          if (order.status !== "pending") {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "This order isn't awaiting payment" });
+          }
+
+          try {
+            const { referenceId } = await momo.requestToPay({
+              amount: Math.round(parseFloat(order.totalAmount)),
+              phone: input.phone,
+              externalId: order.orderNumber,
+              payerMessage: `Xirel order ${order.orderNumber}`,
+            });
+
+            await db.setOrderPaymentReference(order.id, referenceId);
+            return { referenceId };
+          } catch (error) {
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: error instanceof Error ? error.message : "Failed to start MoMo payment",
+            });
+          }
+        }),
+
+      checkStatus: protectedProcedure
+        .input(z.object({ orderId: z.number() }))
+        .mutation(async ({ ctx, input }) => {
+          const order = await db.getOrderById(input.orderId);
+          if (!order || order.userId !== ctx.user.id) {
+            throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+          }
+          if (!order.paymentReference) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "No payment in progress for this order" });
+          }
+
+          const { status } = await momo.checkRequestToPayStatus(order.paymentReference);
+
+          if (status === "SUCCESSFUL" && order.status === "pending") {
+            const updated = await db.updateOrderStatus(order.id, "paid");
+            if (updated) {
+              await tryAutoFulfill(updated);
+            }
+          }
+
+          return { status };
         }),
     }),
   }),
