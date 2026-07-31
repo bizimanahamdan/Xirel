@@ -47,10 +47,11 @@ export function getDb() {
 let schemaReadyPromise: Promise<void> | null = null;
 
 /** Awaitable guarantee that tables exist before the first query runs. */
-function ensureSchema(client: ReturnType<typeof createClient>): Promise<void> {
+async function ensureSchema(client: ReturnType<typeof createClient>): Promise<void> {
   if (schemaReadyPromise) return schemaReadyPromise;
 
-  schemaReadyPromise = client.executeMultiple(`
+  schemaReadyPromise = (async () => {
+    await client.executeMultiple(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       email TEXT NOT NULL UNIQUE,
@@ -82,6 +83,9 @@ function ensureSchema(client: ReturnType<typeof createClient>): Promise<void> {
       imageKey TEXT,
       sku TEXT UNIQUE,
       isActive INTEGER NOT NULL DEFAULT 1,
+      dropshipProvider TEXT,
+      dropshipProductId TEXT,
+      dropshipVariantId TEXT,
       createdAt INTEGER NOT NULL DEFAULT (unixepoch()),
       updatedAt INTEGER NOT NULL DEFAULT (unixepoch())
     );
@@ -105,6 +109,7 @@ function ensureSchema(client: ReturnType<typeof createClient>): Promise<void> {
       paymentMethod TEXT,
       stripePaymentIntentId TEXT,
       items TEXT,
+      fulfillments TEXT,
       createdAt INTEGER NOT NULL DEFAULT (unixepoch()),
       updatedAt INTEGER NOT NULL DEFAULT (unixepoch())
     );
@@ -131,7 +136,27 @@ function ensureSchema(client: ReturnType<typeof createClient>): Promise<void> {
       userAgent TEXT,
       createdAt INTEGER NOT NULL DEFAULT (unixepoch())
     );
-  `).then(() => undefined);
+  `);
+
+    // CREATE TABLE IF NOT EXISTS only helps brand-new databases — a database
+    // created before these columns existed needs them added explicitly.
+    // SQLite has no "ADD COLUMN IF NOT EXISTS", so we just try each one and
+    // ignore "duplicate column" errors.
+    const columnMigrations = [
+      "ALTER TABLE products ADD COLUMN dropshipProvider TEXT",
+      "ALTER TABLE products ADD COLUMN dropshipProductId TEXT",
+      "ALTER TABLE products ADD COLUMN dropshipVariantId TEXT",
+      "ALTER TABLE orders ADD COLUMN fulfillments TEXT",
+    ];
+
+    for (const migration of columnMigrations) {
+      try {
+        await client.execute(migration);
+      } catch {
+        // Column already exists — fine, nothing to do.
+      }
+    }
+  })();
 
   return schemaReadyPromise;
 }
@@ -403,6 +428,43 @@ export async function updateOrderStatus(
   const db = await ready();
   await db.update(orders).set({ status }).where(eq(orders.id, id));
   return getOrderById(id);
+}
+
+export async function linkProductToDropship(
+  productId: number,
+  data: {
+    dropshipProvider: "printify" | "cj";
+    dropshipProductId: string;
+    dropshipVariantId: string;
+  }
+) {
+  const db = await ready();
+  await db.update(products).set(data).where(eq(products.id, productId));
+  return getProductById(productId);
+}
+
+export async function appendOrderFulfillment(
+  orderId: number,
+  entry: {
+    provider: "printify" | "cj";
+    productId: number;
+    externalOrderId?: string;
+    status: "placed" | "failed";
+    error?: string;
+    createdAt: string;
+  }
+) {
+  const db = await ready();
+  const order = await getOrderById(orderId);
+  if (!order) return null;
+
+  const existing = order.fulfillments ?? [];
+  await db
+    .update(orders)
+    .set({ fulfillments: [...existing, entry] })
+    .where(eq(orders.id, orderId));
+
+  return getOrderById(orderId);
 }
 
 // ============ PAYMENT SETTINGS ============
