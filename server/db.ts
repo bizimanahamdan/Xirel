@@ -108,6 +108,7 @@ async function ensureSchema(client: ReturnType<typeof createClient>): Promise<vo
       shippingAddress TEXT,
       paymentMethod TEXT,
       stripePaymentIntentId TEXT,
+      paymentReference TEXT,
       items TEXT,
       fulfillments TEXT,
       createdAt INTEGER NOT NULL DEFAULT (unixepoch()),
@@ -147,6 +148,7 @@ async function ensureSchema(client: ReturnType<typeof createClient>): Promise<vo
       "ALTER TABLE products ADD COLUMN dropshipProductId TEXT",
       "ALTER TABLE products ADD COLUMN dropshipVariantId TEXT",
       "ALTER TABLE orders ADD COLUMN fulfillments TEXT",
+      "ALTER TABLE orders ADD COLUMN paymentReference TEXT",
     ];
 
     for (const migration of columnMigrations) {
@@ -428,6 +430,12 @@ export async function updateOrderStatus(
   const db = await ready();
   await db.update(orders).set({ status }).where(eq(orders.id, id));
   return getOrderById(id);
+}
+
+export async function setOrderPaymentReference(orderId: number, paymentReference: string) {
+  const db = await ready();
+  await db.update(orders).set({ paymentReference }).where(eq(orders.id, orderId));
+  return getOrderById(orderId);
 }
 
 export async function linkProductToDropship(
