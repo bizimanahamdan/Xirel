@@ -12,6 +12,8 @@ import Stripe from "stripe";
 import { storagePut } from "./storage";
 import { parseUserAgent } from "./_core/userAgent";
 import { getChatbotReply, type ChatMessage } from "./_core/supportChat";
+import { tryAutoFulfill } from "./_core/fulfillment";
+import * as printify from "./_core/printify";
 
 // Helper to check admin role
 const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
@@ -481,7 +483,15 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ input }) => {
-        return await db.updateOrderStatus(input.id, input.status);
+        const order = await db.updateOrderStatus(input.id, input.status);
+        if (order) {
+          // Fire-and-forget from the caller's perspective, but fully awaited
+          // here so failures are recorded before we return — never throws,
+          // since fulfillment failures are stored on the order, not surfaced
+          // as an error on the status update itself.
+          await tryAutoFulfill(order);
+        }
+        return await db.getOrderById(input.id);
       }),
   }),
 
@@ -594,6 +604,77 @@ export const appRouter = router({
         const reply = await getChatbotReply(input.messages as ChatMessage[]);
         return { reply };
       }),
+  }),
+
+  integrations: router({
+    printify: router({
+      status: adminProcedure.query(() => ({
+        tokenConfigured: printify.isPrintifyConfigured(),
+        shopIdConfigured: Boolean(ENV.printifyShopId),
+      })),
+
+      listShops: adminProcedure.query(async () => {
+        return await printify.listShops();
+      }),
+
+      listProducts: adminProcedure.query(async () => {
+        if (!ENV.printifyShopId) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "PRINTIFY_SHOP_ID isn't set" });
+        }
+        return await printify.listProducts(ENV.printifyShopId);
+      }),
+
+      getProduct: adminProcedure
+        .input(z.object({ productId: z.string() }))
+        .query(async ({ input }) => {
+          if (!ENV.printifyShopId) {
+            throw new TRPCError({ code: "PRECONDITION_FAILED", message: "PRINTIFY_SHOP_ID isn't set" });
+          }
+          return await printify.getProduct(ENV.printifyShopId, input.productId);
+        }),
+
+      importProduct: adminProcedure
+        .input(
+          z.object({
+            productId: z.string(),
+            variantId: z.number(),
+            categoryId: z.number(),
+            stock: z.number().int().min(0).default(50),
+          })
+        )
+        .mutation(async ({ input }) => {
+          if (!ENV.printifyShopId) {
+            throw new TRPCError({ code: "PRECONDITION_FAILED", message: "PRINTIFY_SHOP_ID isn't set" });
+          }
+
+          const detail = await printify.getProduct(ENV.printifyShopId, input.productId);
+          const variant = detail.variants.find(v => v.id === input.variantId);
+          if (!variant) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Variant not found on that product" });
+          }
+
+          const image = detail.images.find(i => i.is_default) ?? detail.images[0];
+
+          const product = await db.createProduct({
+            name: `${detail.title} - ${variant.title}`,
+            description: detail.description?.replace(/<[^>]+>/g, "").slice(0, 2000),
+            price: (variant.price / 100).toFixed(2),
+            categoryId: input.categoryId,
+            stock: input.stock,
+            imageUrl: image?.src,
+          });
+
+          if (!product) {
+            throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create product" });
+          }
+
+          return await db.linkProductToDropship(product.id, {
+            dropshipProvider: "printify",
+            dropshipProductId: input.productId,
+            dropshipVariantId: input.variantId.toString(),
+          });
+        }),
+    }),
   }),
 });
 
