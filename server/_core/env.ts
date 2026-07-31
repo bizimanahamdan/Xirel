@@ -29,4 +29,13 @@ export const ENV = {
   // fetched via the admin panel once the token is set.
   printifyApiToken: process.env.PRINTIFY_API_TOKEN ?? "",
   printifyShopId: process.env.PRINTIFY_SHOP_ID ?? "",
+  // Optional: MTN MoMo Collections (Request to Pay) for real-time checkout
+  // payment. Get these from momodeveloper.mtn.co.rw (Rwanda) after your
+  // Collections product is approved. If unset, checkout falls back to
+  // creating a pending order for manual payment confirmation.
+  momoApiUser: process.env.MOMO_API_USER ?? "",
+  momoApiKey: process.env.MOMO_API_KEY ?? "",
+  momoSubscriptionKey: process.env.MOMO_SUBSCRIPTION_KEY ?? "",
+  momoTargetEnvironment: process.env.MOMO_TARGET_ENVIRONMENT ?? "mtnrwanda",
+  momoBaseUrl: process.env.MOMO_BASE_URL ?? "https://sandbox.momodeveloper.mtn.com",
 };
