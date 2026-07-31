@@ -54,6 +54,9 @@ await client.executeMultiple(`
     imageKey TEXT,
     sku TEXT UNIQUE,
     isActive INTEGER NOT NULL DEFAULT 1,
+    dropshipProvider TEXT,
+    dropshipProductId TEXT,
+    dropshipVariantId TEXT,
     createdAt INTEGER NOT NULL DEFAULT (unixepoch()),
     updatedAt INTEGER NOT NULL DEFAULT (unixepoch())
   );
@@ -77,6 +80,7 @@ await client.executeMultiple(`
     paymentMethod TEXT,
     stripePaymentIntentId TEXT,
     items TEXT,
+    fulfillments TEXT,
     createdAt INTEGER NOT NULL DEFAULT (unixepoch()),
     updatedAt INTEGER NOT NULL DEFAULT (unixepoch())
   );
