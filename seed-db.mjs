@@ -79,6 +79,7 @@ await client.executeMultiple(`
     shippingAddress TEXT,
     paymentMethod TEXT,
     stripePaymentIntentId TEXT,
+    paymentReference TEXT,
     items TEXT,
     fulfillments TEXT,
     createdAt INTEGER NOT NULL DEFAULT (unixepoch()),
