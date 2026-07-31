@@ -58,6 +58,11 @@ export const products = sqliteTable("products", {
   imageKey: text("imageKey"),
   sku: text("sku").unique(),
   isActive: integer("isActive", { mode: "boolean" }).default(true).notNull(),
+  // Links this product to a print-on-demand/dropshipping provider's exact
+  // product+variant, so an order for it can be auto-placed with them.
+  dropshipProvider: text("dropshipProvider", { enum: ["printify", "cj"] }),
+  dropshipProductId: text("dropshipProductId"),
+  dropshipVariantId: text("dropshipVariantId"),
   createdAt: integer("createdAt", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),
@@ -120,6 +125,18 @@ export const orders = sqliteTable("orders", {
       name: string;
       price: string;
       quantity: number;
+    }>
+  >(),
+  // Records what happened when we tried to auto-place this order with a
+  // dropship provider (Printify, CJ, etc.) — one entry per linked line item.
+  fulfillments: text("fulfillments", { mode: "json" }).$type<
+    Array<{
+      provider: "printify" | "cj";
+      productId: number;
+      externalOrderId?: string;
+      status: "placed" | "failed";
+      error?: string;
+      createdAt: string;
     }>
   >(),
   createdAt: integer("createdAt", { mode: "timestamp" })
