@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, CheckCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Logo } from "@/components/Logo";
@@ -23,6 +23,8 @@ const shippingAddressSchema = z.object({
 
 type ShippingAddress = z.infer<typeof shippingAddressSchema>;
 
+type MomoStatus = "idle" | "requesting" | "pending" | "successful" | "failed";
+
 export default function Checkout() {
   const [formData, setFormData] = useState<ShippingAddress>({
     firstName: "",
@@ -40,12 +42,33 @@ export default function Checkout() {
   const [orderConfirmed, setOrderConfirmed] = useState(false);
   const [confirmedOrder, setConfirmedOrder] = useState<any>(null);
 
+  // Payment step (MTN MoMo) — sits between "order created" and "confirmed".
+  const [pendingOrder, setPendingOrder] = useState<any>(null);
+  const [momoPhone, setMomoPhone] = useState("");
+  const [momoStatus, setMomoStatus] = useState<MomoStatus>("idle");
+  const [momoError, setMomoError] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollAttemptsRef = useRef(0);
+
   const { data: cartItems } = trpc.cart.get.useQuery();
+  const { data: momoStatusInfo } = trpc.payments.momo.status.useQuery();
+  const requestToPayMutation = trpc.payments.momo.requestToPay.useMutation();
+  const checkStatusMutation = trpc.payments.momo.checkStatus.useMutation();
+
   const createOrderMutation = trpc.orders.create.useMutation({
     onSuccess: (order) => {
-      setConfirmedOrder(order);
-      setOrderConfirmed(true);
-      toast.success("Order placed successfully!");
+      if (momoStatusInfo?.configured) {
+        // Real-time payment: show the MoMo step instead of confirming immediately.
+        setPendingOrder(order);
+        setMomoPhone(formData.phone);
+      } else {
+        // MoMo not set up yet — fall back to a pending order the store owner
+        // will confirm manually (e.g. via WhatsApp).
+        setConfirmedOrder(order);
+        setOrderConfirmed(true);
+      }
+      setIsProcessing(false);
+      toast.success("Order created!");
     },
     onError: (error) => {
       toast.error("Failed to place order", {
@@ -54,6 +77,56 @@ export default function Checkout() {
       setIsProcessing(false);
     },
   });
+
+  const stopPolling = () => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  };
+
+  useEffect(() => stopPolling, []);
+
+  const handlePayWithMomo = async () => {
+    if (!pendingOrder || !momoPhone.trim()) return;
+    setMomoError(null);
+    setMomoStatus("requesting");
+
+    try {
+      await requestToPayMutation.mutateAsync({ orderId: pendingOrder.id, phone: momoPhone.trim() });
+      setMomoStatus("pending");
+      pollAttemptsRef.current = 0;
+
+      pollRef.current = setInterval(async () => {
+        pollAttemptsRef.current += 1;
+
+        try {
+          const result = await checkStatusMutation.mutateAsync({ orderId: pendingOrder.id });
+
+          if (result.status === "SUCCESSFUL") {
+            stopPolling();
+            setMomoStatus("successful");
+            setConfirmedOrder({ ...pendingOrder, status: "paid" });
+            setOrderConfirmed(true);
+          } else if (result.status === "FAILED") {
+            stopPolling();
+            setMomoStatus("failed");
+            setMomoError("Payment wasn't approved. You can try again.");
+          } else if (pollAttemptsRef.current > 40) {
+            // ~2 minutes of polling every 3s
+            stopPolling();
+            setMomoStatus("failed");
+            setMomoError("We didn't hear back in time. You can try again.");
+          }
+        } catch {
+          // transient error — keep polling until the attempt cap is hit
+        }
+      }, 3000);
+    } catch (error: any) {
+      setMomoStatus("failed");
+      setMomoError(error?.message ?? "Couldn't start the payment request. Please try again.");
+    }
+  };
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -79,7 +152,7 @@ export default function Checkout() {
       setIsProcessing(true);
       await createOrderMutation.mutateAsync({
         shippingAddress: formData,
-        paymentMethod: "stripe",
+        paymentMethod: momoStatusInfo?.configured ? "momo" : "manual",
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -99,6 +172,71 @@ export default function Checkout() {
       setIsProcessing(false);
     }
   };
+
+  if (pendingOrder && !orderConfirmed) {
+    return (
+      <div className="min-h-screen bg-background">
+        <nav className="sticky top-0 z-50 bg-white border-b border-border shadow-sm">
+          <div className="container flex items-center justify-between h-16">
+            <Link href="/">
+              <a className="cursor-pointer">
+                <Logo />
+              </a>
+            </Link>
+          </div>
+        </nav>
+
+        <div className="container py-12 max-w-md mx-auto">
+          <Card className="p-8 text-center">
+            <div className="w-16 h-16 rounded-full bg-[#FFCC00]/20 flex items-center justify-center mx-auto mb-4">
+              <Smartphone className="w-8 h-8 text-[#FFCC00]" />
+            </div>
+            <h1 className="text-2xl font-bold mb-2">Pay with MTN Mobile Money</h1>
+            <p className="text-muted-foreground mb-1">
+              Order <span className="font-semibold">{pendingOrder.orderNumber}</span>
+            </p>
+            <p className="text-3xl font-bold text-accent-rose mb-6">
+              {parseFloat(pendingOrder.totalAmount).toFixed(0)} RWF
+            </p>
+
+            {momoStatus === "idle" || momoStatus === "failed" ? (
+              <>
+                <label className="block text-sm font-medium mb-2 text-left">MoMo Phone Number</label>
+                <Input
+                  value={momoPhone}
+                  onChange={(e) => setMomoPhone(e.target.value)}
+                  placeholder="078xxxxxxx"
+                  className="mb-4"
+                />
+                {momoError && <p className="text-sm text-destructive mb-4">{momoError}</p>}
+                <Button onClick={handlePayWithMomo} className="w-full" disabled={!momoPhone.trim()}>
+                  Request Payment
+                </Button>
+              </>
+            ) : momoStatus === "requesting" ? (
+              <p className="text-muted-foreground">Sending payment request...</p>
+            ) : (
+              <>
+                <p className="font-semibold mb-2">Check your phone</p>
+                <p className="text-sm text-muted-foreground">
+                  Approve the payment prompt on your phone with your MoMo PIN. This page will update
+                  automatically once it's confirmed.
+                </p>
+              </>
+            )}
+
+            <p className="text-xs text-muted-foreground mt-6">
+              Having trouble? Reach us on{" "}
+              <a href="https://wa.me/250784198911" target="_blank" rel="noopener noreferrer" className="text-accent-rose">
+                WhatsApp
+              </a>
+              .
+            </p>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   if (orderConfirmed && confirmedOrder) {
     return (
@@ -194,11 +332,19 @@ export default function Checkout() {
             {/* Next Steps */}
             <Card className="p-6 bg-accent-light mb-8">
               <h3 className="font-semibold mb-3">What's Next?</h3>
-              <ul className="space-y-2 text-sm">
-                <li>✓ You'll receive a confirmation email shortly</li>
-                <li>✓ Your order will be processed and shipped within 2-3 business days</li>
-                <li>✓ You can track your order status in your account</li>
-              </ul>
+              {confirmedOrder.status === "paid" ? (
+                <ul className="space-y-2 text-sm">
+                  <li>✓ Payment confirmed via MTN Mobile Money</li>
+                  <li>✓ Your order is being processed and will ship soon</li>
+                  <li>✓ You can track your order status in your account</li>
+                </ul>
+              ) : (
+                <ul className="space-y-2 text-sm">
+                  <li>✓ We'll reach out on WhatsApp to confirm payment for this order</li>
+                  <li>✓ Your order ships once payment is confirmed</li>
+                  <li>✓ You can track your order status in your account</li>
+                </ul>
+              )}
             </Card>
 
             {/* Actions */}
