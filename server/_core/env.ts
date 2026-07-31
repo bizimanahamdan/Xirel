@@ -24,4 +24,9 @@ export const ENV = {
   // (no credit card) at console.groq.com. If unset, the chat widget shows a
   // "not available yet, use WhatsApp" message instead of erroring.
   groqApiKey: process.env.GROQ_API_KEY ?? "",
+  // Optional: powers Printify product import + auto order placement. Get a
+  // Personal Access Token from Printify account settings; the shop ID is
+  // fetched via the admin panel once the token is set.
+  printifyApiToken: process.env.PRINTIFY_API_TOKEN ?? "",
+  printifyShopId: process.env.PRINTIFY_SHOP_ID ?? "",
 };
