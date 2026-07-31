@@ -8,6 +8,7 @@ import { Plus, Edit2, Trash2, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Logo } from "@/components/Logo";
+import { PrintifyImportPanel } from "@/components/PrintifyImportPanel";
 
 export default function AdminProducts() {
   const { user, logout } = useAuth();
@@ -282,6 +283,9 @@ export default function AdminProducts() {
               Add Product
             </Button>
           </div>
+
+          {/* Printify Integration */}
+          <PrintifyImportPanel categories={categories} onImported={refetch} />
 
           {/* Category Management */}
           <Card className="p-6 mb-8">
