@@ -443,6 +443,18 @@ export async function updateOrderStatus(
   return getOrderById(id);
 }
 
+export async function deleteOrder(id: number) {
+  const db = await ready();
+  await db.delete(orders).where(eq(orders.id, id));
+  return true;
+}
+
+export async function deleteAllOrders() {
+  const db = await ready();
+  await db.delete(orders);
+  return true;
+}
+
 export async function setOrderPaymentReference(orderId: number, paymentReference: string) {
   const db = await ready();
   await db.update(orders).set({ paymentReference }).where(eq(orders.id, orderId));
