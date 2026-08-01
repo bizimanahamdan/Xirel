@@ -197,3 +197,22 @@ export const analyticsEvents = sqliteTable("analyticsEvents", {
 
 export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
 export type InsertAnalyticsEvent = typeof analyticsEvents.$inferInsert;
+
+/**
+ * Persisted OAuth-style tokens for integrations whose credentials expire and
+ * need refreshing (e.g. CJ Dropshipping). Persisted rather than kept only in
+ * memory so a server restart doesn't force a fresh re-auth every time.
+ */
+export const integrationTokens = sqliteTable("integrationTokens", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  provider: text("provider").notNull().unique(),
+  accessToken: text("accessToken").notNull(),
+  accessTokenExpiresAt: integer("accessTokenExpiresAt", { mode: "timestamp" }).notNull(),
+  refreshToken: text("refreshToken"),
+  refreshTokenExpiresAt: integer("refreshTokenExpiresAt", { mode: "timestamp" }),
+  updatedAt: integer("updatedAt", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export type IntegrationToken = typeof integrationTokens.$inferSelect;
