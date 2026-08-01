@@ -20,6 +20,8 @@ export default function ProductDetail() {
     { id: productId! },
     { enabled: !!productId }
   );
+  const { data: categories } = trpc.categories.list.useQuery();
+  const categoryName = categories?.find((c) => c.id === product?.categoryId)?.name ?? "—";
 
   const addToCartMutation = trpc.cart.add.useMutation({
     onSuccess: () => {
@@ -249,7 +251,7 @@ export default function ProductDetail() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Category</p>
-                <p className="font-semibold">Premium Collection</p>
+                <p className="font-semibold">{categoryName}</p>
               </div>
             </div>
 
