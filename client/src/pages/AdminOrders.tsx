@@ -99,36 +99,36 @@ export default function AdminOrders() {
       </nav>
 
       {/* Sidebar Navigation */}
-      <div className="flex">
-        <div className="w-64 bg-white border-r border-border min-h-screen p-6 sticky top-16">
-          <nav className="space-y-2">
+      <div className="flex flex-col md:flex-row">
+        <div className="w-full md:w-64 bg-white border-b md:border-b-0 md:border-r border-border p-4 md:p-6 md:min-h-screen md:sticky md:top-16">
+          <nav className="flex gap-2 overflow-x-auto pb-1 md:pb-0 md:flex-col md:gap-0 md:space-y-2">
             <Link href="/admin">
-              <span className="block px-4 py-2 rounded-lg hover:bg-secondary transition-colors cursor-pointer">
+              <span className="block px-4 py-2 rounded-lg hover:bg-secondary transition-colors cursor-pointer flex-shrink-0 whitespace-nowrap">
                 Dashboard
               </span>
             </Link>
             <Link href="/admin/products">
-              <span className="block px-4 py-2 rounded-lg hover:bg-secondary transition-colors cursor-pointer">
+              <span className="block px-4 py-2 rounded-lg hover:bg-secondary transition-colors cursor-pointer flex-shrink-0 whitespace-nowrap">
                 Products
               </span>
             </Link>
             <Link href="/admin/orders">
-              <span className="block px-4 py-2 rounded-lg bg-accent text-white font-medium cursor-pointer">
+              <span className="block px-4 py-2 rounded-lg bg-accent text-white font-medium cursor-pointer flex-shrink-0 whitespace-nowrap">
                 Orders
               </span>
             </Link>
             <Link href="/admin/users">
-              <span className="block px-4 py-2 rounded-lg hover:bg-secondary transition-colors cursor-pointer">
+              <span className="block px-4 py-2 rounded-lg hover:bg-secondary transition-colors cursor-pointer flex-shrink-0 whitespace-nowrap">
                 Users
               </span>
             </Link>
             <Link href="/admin/analytics">
-              <span className="block px-4 py-2 rounded-lg hover:bg-secondary transition-colors cursor-pointer">
+              <span className="block px-4 py-2 rounded-lg hover:bg-secondary transition-colors cursor-pointer flex-shrink-0 whitespace-nowrap">
                 Analytics
               </span>
             </Link>
             <Link href="/admin/payment-settings">
-              <span className="block px-4 py-2 rounded-lg hover:bg-secondary transition-colors cursor-pointer">
+              <span className="block px-4 py-2 rounded-lg hover:bg-secondary transition-colors cursor-pointer flex-shrink-0 whitespace-nowrap">
                 Payment Settings
               </span>
             </Link>
