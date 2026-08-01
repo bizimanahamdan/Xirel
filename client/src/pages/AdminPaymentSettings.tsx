@@ -1,56 +1,15 @@
-import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { LogOut, Eye, EyeOff } from "lucide-react";
-import { toast } from "sonner";
+import { LogOut, Smartphone, CheckCircle2, XCircle } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Logo } from "@/components/Logo";
 
 export default function AdminPaymentSettings() {
   const { user, logout } = useAuth();
-  const [showKeys, setShowKeys] = useState(false);
-  const [formData, setFormData] = useState({
-    stripePublishableKey: "",
-    stripeSecretKey: "",
-    stripeEnabled: false,
-    paypalEnabled: false,
-  });
-
-  const { data: settings } = trpc.paymentSettings.get.useQuery();
-  const updateSettingsMutation = trpc.paymentSettings.update.useMutation({
-    onSuccess: () => {
-      toast.success("Payment settings updated successfully");
-    },
-    onError: (error) => {
-      toast.error("Failed to update payment settings", {
-        description: error.message,
-      });
-    },
-  });
-
-  useEffect(() => {
-    if (settings) {
-      setFormData({
-        stripePublishableKey: settings.stripePublishableKey || "",
-        stripeSecretKey: settings.stripeSecretKey || "",
-        stripeEnabled: settings.stripeEnabled || false,
-        paypalEnabled: settings.paypalEnabled || false,
-      });
-    }
-  }, [settings]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateSettingsMutation.mutate({
-      stripePublishableKey: formData.stripePublishableKey || undefined,
-      stripeSecretKey: formData.stripeSecretKey || undefined,
-      stripeEnabled: formData.stripeEnabled,
-      paypalEnabled: formData.paypalEnabled,
-    });
-  };
+  const { data: momoStatus } = trpc.payments.momo.status.useQuery();
+  const { data: printifyStatus } = trpc.integrations.printify.status.useQuery();
+  const { data: cjStatus } = trpc.integrations.cj.status.useQuery();
 
   if (user?.role !== "admin") {
     return (
@@ -128,180 +87,116 @@ export default function AdminPaymentSettings() {
           <div className="mb-8">
             <h1 className="text-4xl font-bold mb-2">Payment Settings</h1>
             <p className="text-muted-foreground">
-              Configure payment methods and API keys
+              These are configured via environment variables on your host (Render), not from this
+              page — this shows what's currently active.
             </p>
           </div>
 
-          <div className="max-w-2xl">
-            <Card className="p-8">
-              <form onSubmit={handleSubmit} className="space-y-8">
-                {/* Stripe Configuration */}
-                <div className="border-b border-border pb-8">
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h2 className="text-2xl font-bold">Stripe Payment</h2>
-                      <p className="text-muted-foreground mt-1">
-                        Enable Stripe to accept credit card payments
-                      </p>
-                    </div>
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formData.stripeEnabled}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            stripeEnabled: e.target.checked,
-                          })
-                        }
-                        className="w-5 h-5 rounded border-border cursor-pointer"
-                      />
-                      <span className="text-sm font-medium">
-                        {formData.stripeEnabled ? "Enabled" : "Disabled"}
+          <div className="max-w-2xl space-y-6">
+            {/* MTN MoMo */}
+            <Card className="p-6">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-full bg-[#FFCC00]/20 flex items-center justify-center flex-shrink-0">
+                  <Smartphone className="w-6 h-6 text-[#FFCC00]" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h2 className="text-xl font-bold">MTN Mobile Money</h2>
+                    {momoStatus?.configured ? (
+                      <span className="inline-flex items-center gap-1 text-green-700 text-sm font-medium">
+                        <CheckCircle2 className="w-4 h-4" /> Connected
                       </span>
-                    </label>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-yellow-700 text-sm font-medium">
+                        <XCircle className="w-4 h-4" /> Not connected
+                      </span>
+                    )}
                   </div>
-
-                  {formData.stripeEnabled && (
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-semibold mb-2">
-                          Stripe Publishable Key
-                        </label>
-                        <div className="relative">
-                          <Input
-                            type={showKeys ? "text" : "password"}
-                            value={formData.stripePublishableKey}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                stripePublishableKey: e.target.value,
-                              })
-                            }
-                            placeholder="pk_live_..."
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowKeys(!showKeys)}
-                            className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
-                          >
-                            {showKeys ? (
-                              <EyeOff className="w-4 h-4" />
-                            ) : (
-                              <Eye className="w-4 h-4" />
-                            )}
-                          </button>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Found in your Stripe Dashboard under Developers &gt;
-                          API keys
-                        </p>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-semibold mb-2">
-                          Stripe Secret Key
-                        </label>
-                        <div className="relative">
-                          <Input
-                            type={showKeys ? "text" : "password"}
-                            value={formData.stripeSecretKey}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                stripeSecretKey: e.target.value,
-                              })
-                            }
-                            placeholder="sk_live_..."
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowKeys(!showKeys)}
-                            className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
-                          >
-                            {showKeys ? (
-                              <EyeOff className="w-4 h-4" />
-                            ) : (
-                              <Eye className="w-4 h-4" />
-                            )}
-                          </button>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Keep this key secret and never share it publicly
-                        </p>
-                      </div>
-
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <p className="text-sm text-blue-800">
-                          <strong>How to get your Stripe keys:</strong>
-                        </p>
-                        <ol className="text-sm text-blue-800 list-decimal list-inside mt-2 space-y-1">
-                          <li>Go to stripe.com and sign in to your account</li>
-                          <li>
-                            Navigate to Developers &gt; API keys in the sidebar
-                          </li>
-                          <li>Copy your Publishable and Secret keys</li>
-                          <li>Paste them in the fields above</li>
-                        </ol>
-                      </div>
-                    </div>
+                  {momoStatus?.configured ? (
+                    <p className="text-sm text-muted-foreground">
+                      Environment: <span className="font-mono">{momoStatus.targetEnvironment}</span> ·
+                      Currency: <span className="font-mono">{momoStatus.currency}</span>
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Checkout falls back to creating a pending order for manual payment
+                      confirmation until this is connected. Set{" "}
+                      <code className="bg-secondary px-1 rounded">MOMO_API_USER</code>,{" "}
+                      <code className="bg-secondary px-1 rounded">MOMO_API_KEY</code>, and{" "}
+                      <code className="bg-secondary px-1 rounded">MOMO_SUBSCRIPTION_KEY</code> in
+                      your environment variables (from momodeveloper.mtn.co.rw).
+                    </p>
                   )}
                 </div>
-
-                {/* PayPal Configuration */}
-                <div className="pb-8">
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h2 className="text-2xl font-bold">PayPal Payment</h2>
-                      <p className="text-muted-foreground mt-1">
-                        Enable PayPal for customer payments
-                      </p>
-                    </div>
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formData.paypalEnabled}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            paypalEnabled: e.target.checked,
-                          })
-                        }
-                        className="w-5 h-5 rounded border-border cursor-pointer"
-                        disabled
-                      />
-                      <span className="text-sm font-medium">
-                        {formData.paypalEnabled ? "Enabled" : "Disabled"}
-                      </span>
-                    </label>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    PayPal integration coming soon
-                  </p>
-                </div>
-
-                {/* Submit Button */}
-                <div className="flex gap-4">
-                  <Button
-                    type="submit"
-                    disabled={updateSettingsMutation.isPending}
-                    className="btn-primary"
-                  >
-                    {updateSettingsMutation.isPending
-                      ? "Saving..."
-                      : "Save Settings"}
-                  </Button>
-                </div>
-              </form>
+              </div>
             </Card>
 
-            {/* Info Box */}
-            <Card className="p-6 mt-8 bg-accent-light">
-              <h3 className="font-semibold mb-2">Security Notice</h3>
+            {/* Printify */}
+            <Card className="p-6">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center flex-shrink-0 font-bold text-lg">
+                  P
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h2 className="text-xl font-bold">Printify</h2>
+                    {printifyStatus?.tokenConfigured && printifyStatus?.shopIdConfigured ? (
+                      <span className="inline-flex items-center gap-1 text-green-700 text-sm font-medium">
+                        <CheckCircle2 className="w-4 h-4" /> Connected
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-yellow-700 text-sm font-medium">
+                        <XCircle className="w-4 h-4" /> Not connected
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Manage this from{" "}
+                    <Link href="/admin/products">
+                      <span className="text-accent-rose hover:underline cursor-pointer">Products</span>
+                    </Link>
+                    , where you can browse and import Printify products directly.
+                  </p>
+                </div>
+              </div>
+            </Card>
+
+            {/* CJ Dropshipping */}
+            <Card className="p-6">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center flex-shrink-0 font-bold text-lg">
+                  CJ
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h2 className="text-xl font-bold">CJ Dropshipping</h2>
+                    {cjStatus?.configured ? (
+                      <span className="inline-flex items-center gap-1 text-green-700 text-sm font-medium">
+                        <CheckCircle2 className="w-4 h-4" /> Connected
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-yellow-700 text-sm font-medium">
+                        <XCircle className="w-4 h-4" /> Not connected
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Manage this from{" "}
+                    <Link href="/admin/products">
+                      <span className="text-accent-rose hover:underline cursor-pointer">Products</span>
+                    </Link>
+                    , where you can search and import CJ products directly.
+                  </p>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-6 bg-accent-light">
+              <h3 className="font-semibold mb-2">Why no keys entered here?</h3>
               <p className="text-sm">
-                Your payment credentials are encrypted and stored securely. Never
-                share your Stripe Secret Key with anyone. Always use HTTPS for
-                your website.
+                All of these credentials live as environment variables on your hosting provider
+                (Render), not in this database — that keeps secrets out of your app's data and off
+                any admin screen. This page just reflects what's currently active.
               </p>
             </Card>
           </div>
