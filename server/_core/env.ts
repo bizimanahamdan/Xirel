@@ -38,4 +38,11 @@ export const ENV = {
   momoSubscriptionKey: process.env.MOMO_SUBSCRIPTION_KEY ?? "",
   momoTargetEnvironment: process.env.MOMO_TARGET_ENVIRONMENT ?? "mtnrwanda",
   momoBaseUrl: process.env.MOMO_BASE_URL ?? "https://sandbox.momodeveloper.mtn.com",
+  // MTN's sandbox rejects any currency except EUR, while production expects
+  // the real local currency. See momo.ts for how this is applied.
+  momoCurrency: process.env.MOMO_CURRENCY || "RWF",
+  // Optional: CJ Dropshipping. Get an API Key from CJ's Personal Center >
+  // API tab > Add API. Unlike Printify's static token, CJ's access token
+  // expires and is refreshed automatically (cached in the database).
+  cjApiKey: process.env.CJ_API_KEY ?? "",
 };
