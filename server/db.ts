@@ -82,6 +82,7 @@ async function ensureSchema(client: ReturnType<typeof createClient>): Promise<vo
       stock INTEGER NOT NULL DEFAULT 0,
       imageUrl TEXT,
       imageKey TEXT,
+      images TEXT,
       sku TEXT UNIQUE,
       isActive INTEGER NOT NULL DEFAULT 1,
       dropshipProvider TEXT,
@@ -160,6 +161,7 @@ async function ensureSchema(client: ReturnType<typeof createClient>): Promise<vo
       "ALTER TABLE products ADD COLUMN dropshipVariantId TEXT",
       "ALTER TABLE orders ADD COLUMN fulfillments TEXT",
       "ALTER TABLE orders ADD COLUMN paymentReference TEXT",
+      "ALTER TABLE products ADD COLUMN images TEXT",
     ];
 
     for (const migration of columnMigrations) {
@@ -302,6 +304,7 @@ export async function createProduct(data: {
   stock: number;
   imageUrl?: string;
   imageKey?: string;
+  images?: string[];
   sku?: string;
 }) {
   const db = await ready();
@@ -319,6 +322,7 @@ export async function updateProduct(
     stock: number;
     imageUrl: string;
     imageKey: string;
+    images: string[];
     sku: string;
     isActive: boolean;
   }>
