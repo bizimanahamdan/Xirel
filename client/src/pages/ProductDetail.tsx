@@ -4,7 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { ShoppingBag, ArrowLeft, Check, AlertCircle } from "lucide-react";
+import { ShoppingBag, ArrowLeft, Check, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
 
@@ -12,6 +12,7 @@ export default function ProductDetail() {
   const [match, params] = useRoute("/products/:id");
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
+  const [activeImage, setActiveImage] = useState(0);
 
   const productId = params?.id ? parseInt(params.id) : null;
 
@@ -121,21 +122,90 @@ export default function ProductDetail() {
         <div className="grid md:grid-cols-2 gap-12">
           {/* Image Section */}
           <div>
-            <Card className="overflow-hidden bg-muted rounded-2xl">
-              <div className="aspect-square w-full flex items-center justify-center">
-                {product.imageUrl ? (
-                  <img
-                    src={product.imageUrl}
-                    alt={product.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-accent-rose/20 to-transparent">
-                    <ShoppingBag className="w-24 h-24 text-muted-foreground" />
-                  </div>
-                )}
-              </div>
-            </Card>
+            {(() => {
+              const gallery =
+                product.images && product.images.length > 0
+                  ? product.images
+                  : product.imageUrl
+                    ? [product.imageUrl]
+                    : [];
+
+              if (gallery.length === 0) {
+                return (
+                  <Card className="overflow-hidden bg-muted rounded-2xl">
+                    <div className="aspect-square w-full flex items-center justify-center bg-gradient-to-br from-accent-rose/20 to-transparent">
+                      <ShoppingBag className="w-24 h-24 text-muted-foreground" />
+                    </div>
+                  </Card>
+                );
+              }
+
+              const goTo = (index: number) => {
+                setActiveImage((index + gallery.length) % gallery.length);
+              };
+
+              return (
+                <div>
+                  <Card className="overflow-hidden bg-muted rounded-2xl relative">
+                    <div className="aspect-square w-full flex items-center justify-center">
+                      <img
+                        src={gallery[activeImage]}
+                        alt={`${product.name} — image ${activeImage + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+
+                    {gallery.length > 1 && (
+                      <>
+                        <button
+                          onClick={() => goTo(activeImage - 1)}
+                          aria-label="Previous image"
+                          className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:bg-white transition-colors"
+                        >
+                          <ChevronLeft className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => goTo(activeImage + 1)}
+                          aria-label="Next image"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:bg-white transition-colors"
+                        >
+                          <ChevronRight className="w-5 h-5" />
+                        </button>
+
+                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                          {gallery.map((_, i) => (
+                            <button
+                              key={i}
+                              onClick={() => goTo(i)}
+                              aria-label={`Go to image ${i + 1}`}
+                              className={`w-2 h-2 rounded-full transition-colors ${
+                                i === activeImage ? "bg-accent-rose" : "bg-white/70"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </Card>
+
+                  {gallery.length > 1 && (
+                    <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+                      {gallery.map((src, i) => (
+                        <button
+                          key={i}
+                          onClick={() => goTo(i)}
+                          className={`w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-colors ${
+                            i === activeImage ? "border-accent-rose" : "border-transparent"
+                          }`}
+                        >
+                          <img src={src} alt="" className="w-full h-full object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Details Section */}
