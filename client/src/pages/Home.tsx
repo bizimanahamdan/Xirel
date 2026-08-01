@@ -33,7 +33,7 @@ export default function Home() {
             </span>
           </Link>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 md:gap-4 text-sm sm:text-base">
             <Link href="/products">
               <span className="text-foreground hover:text-accent-rose transition-colors cursor-pointer">
                 Shop
