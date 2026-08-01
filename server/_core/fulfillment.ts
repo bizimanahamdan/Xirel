@@ -1,5 +1,6 @@
 import * as db from "../db";
 import * as printify from "./printify";
+import * as cj from "./cjDropshipping";
 import { ENV } from "./env";
 import type { Order } from "../../drizzle/schema";
 
@@ -33,8 +34,9 @@ export async function tryAutoFulfill(order: Order): Promise<void> {
 
     if (product.dropshipProvider === "printify") {
       await fulfillWithPrintify(order, item, product);
+    } else if (product.dropshipProvider === "cj") {
+      await fulfillWithCJ(order, item, product);
     }
-    // CJ Dropshipping support follows the same pattern once it's built.
   }
 }
 
@@ -96,6 +98,58 @@ async function fulfillWithPrintify(
       productId: item.productId,
       status: "failed",
       error: error instanceof Error ? error.message : "Unknown error placing Printify order",
+      createdAt,
+    });
+  }
+}
+
+async function fulfillWithCJ(
+  order: Order,
+  item: { productId: number; quantity: number },
+  product: { dropshipVariantId: string | null }
+) {
+  const createdAt = new Date().toISOString();
+
+  if (!cj.isCJConfigured()) {
+    await db.appendOrderFulfillment(order.id, {
+      provider: "cj",
+      productId: item.productId,
+      status: "failed",
+      error: "CJ Dropshipping isn't configured (missing API key).",
+      createdAt,
+    });
+    return;
+  }
+
+  const addr = order.shippingAddress!;
+
+  try {
+    const result = await cj.createOrder({
+      orderNumber: order.orderNumber,
+      shippingCustomerName: `${addr.firstName} ${addr.lastName}`,
+      shippingAddress: addr.street,
+      shippingCity: addr.city,
+      shippingProvince: addr.state,
+      shippingCountryCode: addr.country,
+      shippingZip: addr.zipCode,
+      shippingPhone: addr.phone,
+      email: addr.email,
+      products: [{ vid: product.dropshipVariantId!, quantity: item.quantity }],
+    });
+
+    await db.appendOrderFulfillment(order.id, {
+      provider: "cj",
+      productId: item.productId,
+      externalOrderId: result.orderId,
+      status: "placed",
+      createdAt,
+    });
+  } catch (error) {
+    await db.appendOrderFulfillment(order.id, {
+      provider: "cj",
+      productId: item.productId,
+      status: "failed",
+      error: error instanceof Error ? error.message : "Unknown error placing CJ order",
       createdAt,
     });
   }
