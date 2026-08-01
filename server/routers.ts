@@ -496,6 +496,20 @@ export const appRouter = router({
         }
         return await db.getOrderById(input.id);
       }),
+
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteOrder(input.id);
+        return { success: true } as const;
+      }),
+
+    // Bulk cleanup — handy for clearing out test orders. Deletes every
+    // order, no filtering, so the client should confirm hard before calling.
+    deleteAll: adminProcedure.mutation(async () => {
+      await db.deleteAllOrders();
+      return { success: true } as const;
+    }),
   }),
 
   // ============ USERS ============
@@ -735,6 +749,8 @@ export const appRouter = router({
       // flow or fall back to "we'll confirm payment manually" messaging.
       status: publicProcedure.query(() => ({
         configured: momo.isMomoConfigured(),
+        targetEnvironment: ENV.momoTargetEnvironment,
+        currency: ENV.momoTargetEnvironment === "sandbox" ? "EUR" : ENV.momoCurrency,
       })),
 
       // Lets the client show the real RWF amount that will actually be
