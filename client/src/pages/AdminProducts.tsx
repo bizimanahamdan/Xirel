@@ -23,7 +23,7 @@ export default function AdminProducts() {
     stock: "",
     sku: "",
   });
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
 
@@ -81,7 +81,7 @@ export default function AdminProducts() {
         stock: "",
         sku: "",
       });
-      setImageFile(null);
+      setImageFiles([]);
       setShowForm(false);
       refetch();
     },
@@ -104,7 +104,7 @@ export default function AdminProducts() {
         stock: "",
         sku: "",
       });
-      setImageFile(null);
+      setImageFiles([]);
       refetch();
     },
     onError: (error) => {
@@ -145,18 +145,24 @@ export default function AdminProducts() {
     e.preventDefault();
 
     let imageUrl: string | undefined;
+    let images: string[] | undefined;
 
-    if (imageFile) {
+    if (imageFiles.length > 0) {
       try {
-        const base64 = await readFileAsBase64(imageFile);
-        const uploaded = await uploadImageMutation.mutateAsync({
-          imageData: base64,
-          fileName: imageFile.name,
-          contentType: imageFile.type || "image/jpeg",
-        });
-        imageUrl = uploaded.url;
+        const uploaded: string[] = [];
+        for (const file of imageFiles) {
+          const base64 = await readFileAsBase64(file);
+          const result = await uploadImageMutation.mutateAsync({
+            imageData: base64,
+            fileName: file.name,
+            contentType: file.type || "image/jpeg",
+          });
+          uploaded.push(result.url);
+        }
+        images = uploaded;
+        imageUrl = uploaded[0];
       } catch (error) {
-        toast.error("Failed to upload image");
+        toast.error("Failed to upload images");
         return;
       }
     }
@@ -170,7 +176,7 @@ export default function AdminProducts() {
         categoryId: parseInt(formData.categoryId) || undefined,
         stock: parseInt(formData.stock) || undefined,
         sku: formData.sku || undefined,
-        ...(imageUrl ? { imageUrl } : {}),
+        ...(imageUrl ? { imageUrl, images } : {}),
       });
     } else {
       createProductMutation.mutate({
@@ -180,7 +186,7 @@ export default function AdminProducts() {
         categoryId: parseInt(formData.categoryId),
         stock: parseInt(formData.stock),
         sku: formData.sku,
-        ...(imageUrl ? { imageUrl } : {}),
+        ...(imageUrl ? { imageUrl, images } : {}),
       });
     }
   };
@@ -407,17 +413,19 @@ export default function AdminProducts() {
 
                 <div>
                   <label className="block text-sm font-semibold mb-2">
-                    Product Image (Optional)
+                    Product Images (Optional — first one is the thumbnail)
                   </label>
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                    multiple
+                    onChange={(e) => setImageFiles(Array.from(e.target.files ?? []))}
                     className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
                   />
-                  {imageFile && (
+                  {imageFiles.length > 0 && (
                     <p className="text-sm text-muted-foreground mt-2">
-                      Selected: {imageFile.name}
+                      Selected {imageFiles.length} image{imageFiles.length > 1 ? "s" : ""}:{" "}
+                      {imageFiles.map((f) => f.name).join(", ")}
                     </p>
                   )}
                 </div>
