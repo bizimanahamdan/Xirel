@@ -60,6 +60,12 @@ export async function requestToPay(params: {
   const token = await getAccessToken();
   const referenceId = crypto.randomUUID();
 
+  // MTN's sandbox environment only accepts "EUR" as the currency code,
+  // regardless of what you're actually charging in — production uses the
+  // real local currency. The amount itself is unaffected either way; it's
+  // purely the currency *code* that sandbox is picky about.
+  const currency = ENV.momoTargetEnvironment === "sandbox" ? "EUR" : ENV.momoCurrency;
+
   const response = await fetch(`${ENV.momoBaseUrl}/collection/v1_0/requesttopay`, {
     method: "POST",
     headers: {
@@ -71,7 +77,7 @@ export async function requestToPay(params: {
     },
     body: JSON.stringify({
       amount: params.amount.toFixed(0),
-      currency: "RWF",
+      currency,
       externalId: params.externalId,
       payer: {
         partyIdType: "MSISDN",
