@@ -11,6 +11,7 @@ import {
   orders,
   paymentSettings,
   analyticsEvents,
+  integrationTokens,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -136,6 +137,16 @@ async function ensureSchema(client: ReturnType<typeof createClient>): Promise<vo
       os TEXT NOT NULL DEFAULT 'unknown',
       userAgent TEXT,
       createdAt INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+
+    CREATE TABLE IF NOT EXISTS integrationTokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      provider TEXT NOT NULL UNIQUE,
+      accessToken TEXT NOT NULL,
+      accessTokenExpiresAt INTEGER NOT NULL,
+      refreshToken TEXT,
+      refreshTokenExpiresAt INTEGER,
+      updatedAt INTEGER NOT NULL DEFAULT (unixepoch())
     );
   `);
 
@@ -473,6 +484,42 @@ export async function appendOrderFulfillment(
     .where(eq(orders.id, orderId));
 
   return getOrderById(orderId);
+}
+
+// ============ INTEGRATION TOKENS ============
+
+export async function getIntegrationToken(provider: string) {
+  const db = await ready();
+  const result = await db
+    .select()
+    .from(integrationTokens)
+    .where(eq(integrationTokens.provider, provider))
+    .limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function upsertIntegrationToken(
+  provider: string,
+  data: {
+    accessToken: string;
+    accessTokenExpiresAt: Date;
+    refreshToken?: string | null;
+    refreshTokenExpiresAt?: Date | null;
+  }
+) {
+  const db = await ready();
+  const existing = await getIntegrationToken(provider);
+
+  if (existing) {
+    await db
+      .update(integrationTokens)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(integrationTokens.provider, provider));
+  } else {
+    await db.insert(integrationTokens).values({ provider, ...data });
+  }
+
+  return getIntegrationToken(provider);
 }
 
 // ============ PAYMENT SETTINGS ============
