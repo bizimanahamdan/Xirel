@@ -18,6 +18,7 @@ import { Logo } from "@/components/Logo";
 export default function AdminOrders() {
   const { user, logout } = useAuth();
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [confirmingDeleteAll, setConfirmingDeleteAll] = useState(false);
   const { data: orders, refetch } = trpc.orders.getAllOrders.useQuery();
 
   const updateStatusMutation = trpc.orders.updateStatus.useMutation({
@@ -30,6 +31,29 @@ export default function AdminOrders() {
       toast.error("Failed to update order status", {
         description: error.message,
       });
+    },
+  });
+
+  const deleteOrderMutation = trpc.orders.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Order deleted");
+      setSelectedOrder(null);
+      refetch();
+    },
+    onError: (error) => {
+      toast.error("Failed to delete order", { description: error.message });
+    },
+  });
+
+  const deleteAllMutation = trpc.orders.deleteAll.useMutation({
+    onSuccess: () => {
+      toast.success("All orders deleted");
+      setConfirmingDeleteAll(false);
+      setSelectedOrder(null);
+      refetch();
+    },
+    onError: (error) => {
+      toast.error("Failed to delete orders", { description: error.message });
     },
   });
 
@@ -113,11 +137,37 @@ export default function AdminOrders() {
 
         {/* Main Content */}
         <div className="flex-1 p-8">
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold mb-2">Orders</h1>
-            <p className="text-muted-foreground">
-              Manage and track all customer orders
-            </p>
+          <div className="mb-8 flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-4xl font-bold mb-2">Orders</h1>
+              <p className="text-muted-foreground">
+                Manage and track all customer orders
+              </p>
+            </div>
+            {orders && orders.length > 0 && (
+              <div className="flex-shrink-0">
+                {confirmingDeleteAll ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-destructive font-medium">Delete all {orders.length} orders?</span>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      disabled={deleteAllMutation.isPending}
+                      onClick={() => deleteAllMutation.mutate()}
+                    >
+                      {deleteAllMutation.isPending ? "Deleting..." : "Yes, delete all"}
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setConfirmingDeleteAll(false)}>
+                      Cancel
+                    </Button>
+                  </div>
+                ) : (
+                  <Button variant="outline" size="sm" onClick={() => setConfirmingDeleteAll(true)}>
+                    Delete All Orders
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="grid lg:grid-cols-3 gap-8">
@@ -331,6 +381,22 @@ export default function AdminOrders() {
                       <p className="font-semibold">
                         {new Date(selectedOrder.createdAt).toLocaleDateString()}
                       </p>
+                    </div>
+
+                    <div className="border-t border-border pt-4">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="w-full"
+                        disabled={deleteOrderMutation.isPending}
+                        onClick={() => {
+                          if (confirm(`Delete order ${selectedOrder.orderNumber}? This can't be undone.`)) {
+                            deleteOrderMutation.mutate({ id: selectedOrder.id });
+                          }
+                        }}
+                      >
+                        {deleteOrderMutation.isPending ? "Deleting..." : "Delete This Order"}
+                      </Button>
                     </div>
                   </div>
                 </Card>
