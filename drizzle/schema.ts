@@ -56,6 +56,11 @@ export const products = sqliteTable("products", {
   stock: integer("stock").default(0).notNull(),
   imageUrl: text("imageUrl"),
   imageKey: text("imageKey"),
+  // Full gallery for the product detail page's slider. imageUrl above stays
+  // as the quick "thumbnail" used in lists/cards — images[0] is normally the
+  // same picture, but imageUrl is kept separate so older products (created
+  // before this existed) still work with just a single image.
+  images: text("images", { mode: "json" }).$type<string[]>(),
   sku: text("sku").unique(),
   isActive: integer("isActive", { mode: "boolean" }).default(true).notNull(),
   // Links this product to a print-on-demand/dropshipping provider's exact
