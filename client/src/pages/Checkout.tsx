@@ -52,6 +52,10 @@ export default function Checkout() {
 
   const { data: cartItems } = trpc.cart.get.useQuery();
   const { data: momoStatusInfo } = trpc.payments.momo.status.useQuery();
+  const { data: momoPreview } = trpc.payments.momo.previewAmount.useQuery(
+    { orderId: pendingOrder?.id },
+    { enabled: Boolean(pendingOrder?.id) }
+  );
   const requestToPayMutation = trpc.payments.momo.requestToPay.useMutation();
   const checkStatusMutation = trpc.payments.momo.checkStatus.useMutation();
 
@@ -195,8 +199,11 @@ export default function Checkout() {
             <p className="text-muted-foreground mb-1">
               Order <span className="font-semibold">{pendingOrder.orderNumber}</span>
             </p>
+            <p className="text-sm text-muted-foreground mb-1">
+              ${parseFloat(pendingOrder.totalAmount).toFixed(2)} USD
+            </p>
             <p className="text-3xl font-bold text-accent-rose mb-6">
-              {parseFloat(pendingOrder.totalAmount).toFixed(0)} RWF
+              {momoPreview ? momoPreview.rwfAmount.toLocaleString() : "..."} RWF
             </p>
 
             {momoStatus === "idle" || momoStatus === "failed" ? (
