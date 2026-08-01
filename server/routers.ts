@@ -15,6 +15,8 @@ import { getChatbotReply, type ChatMessage } from "./_core/supportChat";
 import { tryAutoFulfill } from "./_core/fulfillment";
 import * as printify from "./_core/printify";
 import * as momo from "./_core/momo";
+import * as cj from "./_core/cjDropshipping";
+import { convertUsdToRwf } from "./_core/exchangeRate";
 
 // Helper to check admin role
 const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
@@ -676,6 +678,55 @@ export const appRouter = router({
           });
         }),
     }),
+
+    cj: router({
+      status: adminProcedure.query(() => ({
+        configured: cj.isCJConfigured(),
+      })),
+
+      searchProducts: adminProcedure
+        .input(
+          z.object({
+            keyword: z.string().optional(),
+            pageNum: z.number().int().min(1).default(1),
+          })
+        )
+        .query(async ({ input }) => {
+          return await cj.searchProducts({ keyword: input.keyword, pageNum: input.pageNum });
+        }),
+
+      importProduct: adminProcedure
+        .input(
+          z.object({
+            productId: z.string(),
+            vid: z.string(),
+            name: z.string(),
+            price: z.string(),
+            imageUrl: z.string().optional(),
+            categoryId: z.number(),
+            stock: z.number().int().min(0).default(50),
+          })
+        )
+        .mutation(async ({ input }) => {
+          const product = await db.createProduct({
+            name: input.name,
+            price: input.price,
+            categoryId: input.categoryId,
+            stock: input.stock,
+            imageUrl: input.imageUrl,
+          });
+
+          if (!product) {
+            throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create product" });
+          }
+
+          return await db.linkProductToDropship(product.id, {
+            dropshipProvider: "cj",
+            dropshipProductId: input.productId,
+            dropshipVariantId: input.vid,
+          });
+        }),
+    }),
   }),
 
   payments: router({
@@ -685,6 +736,22 @@ export const appRouter = router({
       status: publicProcedure.query(() => ({
         configured: momo.isMomoConfigured(),
       })),
+
+      // Lets the client show the real RWF amount that will actually be
+      // charged (converted from this store's USD prices) before the
+      // customer commits to paying — uses the same conversion requestToPay
+      // uses below, so what's displayed matches what's charged.
+      previewAmount: protectedProcedure
+        .input(z.object({ orderId: z.number() }))
+        .query(async ({ ctx, input }) => {
+          const order = await db.getOrderById(input.orderId);
+          if (!order || order.userId !== ctx.user.id) {
+            throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+          }
+
+          const { rwfAmount, rate, source } = await convertUsdToRwf(parseFloat(order.totalAmount));
+          return { usdAmount: order.totalAmount, rwfAmount, rate, source };
+        }),
 
       requestToPay: protectedProcedure
         .input(z.object({ orderId: z.number(), phone: z.string().min(6) }))
@@ -698,15 +765,17 @@ export const appRouter = router({
           }
 
           try {
+            const { rwfAmount } = await convertUsdToRwf(parseFloat(order.totalAmount));
+
             const { referenceId } = await momo.requestToPay({
-              amount: Math.round(parseFloat(order.totalAmount)),
+              amount: rwfAmount,
               phone: input.phone,
               externalId: order.orderNumber,
               payerMessage: `Xirel order ${order.orderNumber}`,
             });
 
             await db.setOrderPaymentReference(order.id, referenceId);
-            return { referenceId };
+            return { referenceId, rwfAmount };
           } catch (error) {
             throw new TRPCError({
               code: "INTERNAL_SERVER_ERROR",
