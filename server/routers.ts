@@ -183,6 +183,7 @@ export const appRouter = router({
           stock: z.number(),
           imageUrl: z.string().optional(),
           imageKey: z.string().optional(),
+          images: z.array(z.string()).optional(),
           sku: z.string().optional(),
         })
       )
@@ -201,6 +202,7 @@ export const appRouter = router({
           stock: z.number().optional(),
           imageUrl: z.string().optional(),
           imageKey: z.string().optional(),
+          images: z.array(z.string()).optional(),
           sku: z.string().optional(),
           isActive: z.boolean().optional(),
         })
@@ -671,6 +673,7 @@ export const appRouter = router({
           }
 
           const image = detail.images.find(i => i.is_default) ?? detail.images[0];
+          const allImages = detail.images.map(i => i.src).filter(Boolean);
 
           const product = await db.createProduct({
             name: `${detail.title} - ${variant.title}`,
@@ -679,6 +682,7 @@ export const appRouter = router({
             categoryId: input.categoryId,
             stock: input.stock,
             imageUrl: image?.src,
+            images: allImages.length > 0 ? allImages : undefined,
           });
 
           if (!product) {
@@ -728,6 +732,7 @@ export const appRouter = router({
             categoryId: input.categoryId,
             stock: input.stock,
             imageUrl: input.imageUrl,
+            images: input.imageUrl ? [input.imageUrl] : undefined,
           });
 
           if (!product) {
