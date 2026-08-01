@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Logo } from "@/components/Logo";
 import { PrintifyImportPanel } from "@/components/PrintifyImportPanel";
+import { CJImportPanel } from "@/components/CJImportPanel";
 
 export default function AdminProducts() {
   const { user, logout } = useAuth();
@@ -286,6 +287,9 @@ export default function AdminProducts() {
 
           {/* Printify Integration */}
           <PrintifyImportPanel categories={categories} onImported={refetch} />
+
+          {/* CJ Dropshipping Integration */}
+          <CJImportPanel categories={categories} onImported={refetch} />
 
           {/* Category Management */}
           <Card className="p-6 mb-8">
