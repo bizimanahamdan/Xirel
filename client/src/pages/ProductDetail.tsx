@@ -4,7 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { ShoppingBag, ArrowLeft, Check, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { ShoppingBag, ArrowLeft, Check, AlertCircle, ChevronLeft, ChevronRight, PlayCircle, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
 
@@ -13,6 +13,7 @@ export default function ProductDetail() {
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
   const [activeImage, setActiveImage] = useState(0);
+  const [showVideo, setShowVideo] = useState(false);
 
   const productId = params?.id ? parseInt(params.id) : null;
 
@@ -124,7 +125,39 @@ export default function ProductDetail() {
         <div className="grid md:grid-cols-2 gap-12">
           {/* Image Section */}
           <div>
-            {(() => {
+            {product.showcaseVideoUrl && (
+              <button
+                onClick={() => setShowVideo(!showVideo)}
+                className="mb-3 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent-rose text-white text-sm font-semibold hover:bg-accent-rose/90 transition-colors"
+              >
+                {showVideo ? (
+                  <>
+                    <ImageIcon className="w-4 h-4" /> View Photos
+                  </>
+                ) : (
+                  <>
+                    <PlayCircle className="w-4 h-4" /> Watch Showcase
+                  </>
+                )}
+              </button>
+            )}
+
+            {showVideo && product.showcaseVideoUrl ? (
+              <Card className="overflow-hidden bg-muted rounded-2xl">
+                <div className="aspect-square w-full">
+                  <video
+                    src={product.showcaseVideoUrl}
+                    className="w-full h-full object-cover"
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    controls
+                  />
+                </div>
+              </Card>
+            ) : (
+              (() => {
               const gallery =
                 product.images && product.images.length > 0
                   ? product.images
@@ -207,7 +240,8 @@ export default function ProductDetail() {
                   )}
                 </div>
               );
-            })()}
+            })()
+            )}
           </div>
 
           {/* Details Section */}
