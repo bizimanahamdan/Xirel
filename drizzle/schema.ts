@@ -61,6 +61,8 @@ export const products = sqliteTable("products", {
   // same picture, but imageUrl is kept separate so older products (created
   // before this existed) still work with just a single image.
   images: text("images", { mode: "json" }).$type<string[]>(),
+  // AI-generated cinematic showcase video (Higgsfield), if one has been made.
+  showcaseVideoUrl: text("showcaseVideoUrl"),
   sku: text("sku").unique(),
   isActive: integer("isActive", { mode: "boolean" }).default(true).notNull(),
   // Links this product to a print-on-demand/dropshipping provider's exact
