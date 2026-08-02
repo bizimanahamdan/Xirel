@@ -54,3 +54,32 @@ export async function storageGet(relKey: string): Promise<{ key: string; url: st
   // resolve here. For the data-URI fallback, relKey already *is* the URL.
   return { key: relKey, url: relKey };
 }
+
+/**
+ * Re-hosts a video from an external URL (e.g. Higgsfield's generation
+ * output) onto Cloudinary, so the product page doesn't depend on a
+ * third-party AI provider's CDN staying up indefinitely. Cloudinary can
+ * fetch directly from the source URL — no need to download the bytes
+ * through our own server first.
+ *
+ * Falls back to returning the original URL unchanged if Cloudinary isn't
+ * configured — still works, just without the independent long-term hosting.
+ */
+export async function storeRemoteVideo(sourceUrl: string): Promise<string> {
+  if (!isCloudinaryEnabled()) {
+    return sourceUrl;
+  }
+
+  ensureCloudinaryConfigured();
+
+  try {
+    const result = await cloudinary.uploader.upload(sourceUrl, {
+      folder: "xirel/showcase-videos",
+      resource_type: "video",
+    });
+    return result.secure_url;
+  } catch (error) {
+    console.error("Failed to re-host showcase video on Cloudinary, using original URL:", error);
+    return sourceUrl;
+  }
+}
