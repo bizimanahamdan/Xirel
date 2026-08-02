@@ -88,6 +88,7 @@ async function ensureSchema(client: ReturnType<typeof createClient>): Promise<vo
       dropshipProvider TEXT,
       dropshipProductId TEXT,
       dropshipVariantId TEXT,
+      showcaseVideoUrl TEXT,
       createdAt INTEGER NOT NULL DEFAULT (unixepoch()),
       updatedAt INTEGER NOT NULL DEFAULT (unixepoch())
     );
@@ -162,6 +163,7 @@ async function ensureSchema(client: ReturnType<typeof createClient>): Promise<vo
       "ALTER TABLE orders ADD COLUMN fulfillments TEXT",
       "ALTER TABLE orders ADD COLUMN paymentReference TEXT",
       "ALTER TABLE products ADD COLUMN images TEXT",
+      "ALTER TABLE products ADD COLUMN showcaseVideoUrl TEXT",
     ];
 
     for (const migration of columnMigrations) {
@@ -475,6 +477,12 @@ export async function linkProductToDropship(
 ) {
   const db = await ready();
   await db.update(products).set(data).where(eq(products.id, productId));
+  return getProductById(productId);
+}
+
+export async function setProductShowcaseVideo(productId: number, showcaseVideoUrl: string) {
+  const db = await ready();
+  await db.update(products).set({ showcaseVideoUrl }).where(eq(products.id, productId));
   return getProductById(productId);
 }
 
