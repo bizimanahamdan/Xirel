@@ -9,13 +9,14 @@ import * as db from "./db";
 import { TRPCError } from "@trpc/server";
 import { notifyOwner } from "./_core/notification";
 import Stripe from "stripe";
-import { storagePut } from "./storage";
+import { storagePut, storeRemoteVideo } from "./storage";
 import { parseUserAgent } from "./_core/userAgent";
 import { getChatbotReply, type ChatMessage } from "./_core/supportChat";
 import { tryAutoFulfill } from "./_core/fulfillment";
 import * as printify from "./_core/printify";
 import * as momo from "./_core/momo";
 import * as cj from "./_core/cjDropshipping";
+import * as higgsfield from "./_core/higgsfield";
 import { convertUsdToRwf } from "./_core/exchangeRate";
 
 // Helper to check admin role
@@ -744,6 +745,48 @@ export const appRouter = router({
             dropshipProductId: input.productId,
             dropshipVariantId: input.vid,
           });
+        }),
+    }),
+
+    higgsfield: router({
+      status: adminProcedure.query(() => ({
+        configured: higgsfield.isHiggsfieldConfigured(),
+      })),
+
+      generateShowcaseVideo: adminProcedure
+        .input(z.object({ productId: z.number(), prompt: z.string().optional() }))
+        .mutation(async ({ input }) => {
+          const product = await db.getProductById(input.productId);
+          if (!product) {
+            throw new TRPCError({ code: "NOT_FOUND", message: "Product not found" });
+          }
+
+          const sourceImage = product.imageUrl ?? product.images?.[0];
+          if (!sourceImage) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "This product has no image to generate a video from yet",
+            });
+          }
+          // Higgsfield needs a URL it can fetch — a local base64 data URI
+          // (the no-Cloudinary fallback) won't work as input.
+          if (sourceImage.startsWith("data:")) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Connect Cloudinary first — Higgsfield needs a real image URL, not an inline data URI.",
+            });
+          }
+
+          try {
+            const higgsfieldUrl = await higgsfield.generateProductShowcaseVideo(sourceImage, input.prompt);
+            const finalUrl = await storeRemoteVideo(higgsfieldUrl);
+            return await db.setProductShowcaseVideo(product.id, finalUrl);
+          } catch (error) {
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: error instanceof Error ? error.message : "Failed to generate showcase video",
+            });
+          }
         }),
     }),
   }),
