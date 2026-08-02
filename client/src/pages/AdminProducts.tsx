@@ -4,7 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit2, Trash2, LogOut } from "lucide-react";
+import { Plus, Edit2, Trash2, LogOut, Film } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Logo } from "@/components/Logo";
@@ -29,6 +29,20 @@ export default function AdminProducts() {
 
   const { data: products, refetch } = trpc.products.list.useQuery({});
   const { data: categories, refetch: refetchCategories } = trpc.categories.list.useQuery();
+
+  const [generatingVideoId, setGeneratingVideoId] = useState<number | null>(null);
+  const { data: higgsfieldStatus } = trpc.integrations.higgsfield.status.useQuery();
+  const generateVideoMutation = trpc.integrations.higgsfield.generateShowcaseVideo.useMutation({
+    onSuccess: () => {
+      toast.success("Showcase video generated");
+      setGeneratingVideoId(null);
+      refetch();
+    },
+    onError: (error) => {
+      toast.error("Failed to generate video", { description: error.message });
+      setGeneratingVideoId(null);
+    },
+  });
 
   const createCategoryMutation = trpc.categories.create.useMutation({
     onSuccess: () => {
@@ -522,7 +536,14 @@ export default function AdminProducts() {
                       key={product.id}
                       className="border-b border-border hover:bg-secondary"
                     >
-                      <td className="py-3 px-4 font-medium">{product.name}</td>
+                      <td className="py-3 px-4 font-medium">
+                        {product.name}
+                        {product.showcaseVideoUrl && (
+                          <span className="ml-2 inline-flex items-center gap-1 text-xs text-green-700 font-normal">
+                            <Film className="w-3 h-3" /> Video
+                          </span>
+                        )}
+                      </td>
                       <td className="py-3 px-4">
                         {categories?.find((c) => c.id === product.categoryId)
                           ?.name || "Unknown"}
@@ -560,6 +581,23 @@ export default function AdminProducts() {
                             className="text-accent-rose hover:text-accent-rose/80"
                           >
                             <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setGeneratingVideoId(product.id);
+                              generateVideoMutation.mutate({ productId: product.id });
+                            }}
+                            disabled={!higgsfieldStatus?.configured || generatingVideoId === product.id}
+                            title={
+                              !higgsfieldStatus?.configured
+                                ? "Set HIGGSFIELD_API_KEY and HIGGSFIELD_API_SECRET to enable this"
+                                : product.showcaseVideoUrl
+                                  ? "Regenerate showcase video"
+                                  : "Generate showcase video"
+                            }
+                            className="text-purple-600 hover:text-purple-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            <Film className={`w-4 h-4 ${generatingVideoId === product.id ? "animate-pulse" : ""}`} />
                           </button>
                           <button
                             onClick={() =>
