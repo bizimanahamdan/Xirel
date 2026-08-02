@@ -45,4 +45,8 @@ export const ENV = {
   // API tab > Add API. Unlike Printify's static token, CJ's access token
   // expires and is refreshed automatically (cached in the database).
   cjApiKey: process.env.CJ_API_KEY ?? "",
+  // Optional: AI-generated cinematic showcase videos per product. Get an
+  // API key + secret from cloud.higgsfield.ai.
+  higgsfieldApiKey: process.env.HIGGSFIELD_API_KEY ?? "",
+  higgsfieldApiSecret: process.env.HIGGSFIELD_API_SECRET ?? "",
 };
