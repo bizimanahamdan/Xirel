@@ -95,7 +95,7 @@ export default function ProductDetail() {
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-white border-b border-border shadow-sm">
+      <nav className="sticky top-0 z-50 bg-card border-b border-border shadow-sm">
         <div className="container flex items-center justify-between h-16">
           <Link href="/">
             <a className="cursor-pointer">
@@ -195,14 +195,14 @@ export default function ProductDetail() {
                         <button
                           onClick={() => goTo(activeImage - 1)}
                           aria-label="Previous image"
-                          className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:bg-white transition-colors"
+                          className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-card/90 shadow flex items-center justify-center hover:bg-card transition-colors"
                         >
                           <ChevronLeft className="w-5 h-5" />
                         </button>
                         <button
                           onClick={() => goTo(activeImage + 1)}
                           aria-label="Next image"
-                          className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center hover:bg-white transition-colors"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-card/90 shadow flex items-center justify-center hover:bg-card transition-colors"
                         >
                           <ChevronRight className="w-5 h-5" />
                         </button>
@@ -214,7 +214,7 @@ export default function ProductDetail() {
                               onClick={() => goTo(i)}
                               aria-label={`Go to image ${i + 1}`}
                               className={`w-2 h-2 rounded-full transition-colors ${
-                                i === activeImage ? "bg-accent-rose" : "bg-white/70"
+                                i === activeImage ? "bg-accent-rose" : "bg-card/70"
                               }`}
                             />
                           ))}
