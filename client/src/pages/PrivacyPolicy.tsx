@@ -5,7 +5,7 @@ import { Logo } from "@/components/Logo";
 export default function PrivacyPolicy() {
   return (
     <div className="min-h-screen bg-background">
-      <nav className="sticky top-0 z-50 bg-white border-b border-border shadow-sm">
+      <nav className="sticky top-0 z-50 bg-card border-b border-border shadow-sm">
         <div className="container flex items-center justify-between h-16">
           <Link href="/">
             <span className="cursor-pointer">
