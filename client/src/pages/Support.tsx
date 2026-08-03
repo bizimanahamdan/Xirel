@@ -57,7 +57,7 @@ export default function Support() {
 
   return (
     <div className="min-h-screen bg-background">
-      <nav className="sticky top-0 z-50 bg-white border-b border-border shadow-sm">
+      <nav className="sticky top-0 z-50 bg-card border-b border-border shadow-sm">
         <div className="container flex items-center justify-between h-16">
           <Link href="/">
             <span className="cursor-pointer">
@@ -107,7 +107,7 @@ export default function Support() {
                   className={`max-w-[80%] px-4 py-2 rounded-2xl text-sm ${
                     m.role === "user"
                       ? "bg-accent-rose text-white rounded-br-sm"
-                      : "bg-white border border-border rounded-bl-sm"
+                      : "bg-card border border-border rounded-bl-sm"
                   }`}
                 >
                   {m.content}
@@ -116,7 +116,7 @@ export default function Support() {
             ))}
             {chatMutation.isPending && (
               <div className="flex justify-start">
-                <div className="max-w-[80%] px-4 py-2 rounded-2xl rounded-bl-sm text-sm bg-white border border-border text-muted-foreground">
+                <div className="max-w-[80%] px-4 py-2 rounded-2xl rounded-bl-sm text-sm bg-card border border-border text-muted-foreground">
                   Typing...
                 </div>
               </div>
