@@ -84,7 +84,7 @@ export default function Products() {
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-white border-b border-border shadow-sm">
+      <nav className="sticky top-0 z-50 bg-card border-b border-border shadow-sm">
         <div className="container flex items-center justify-between h-16">
           <Link href="/">
             <a className="cursor-pointer">
