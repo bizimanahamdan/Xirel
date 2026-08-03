@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -41,80 +41,98 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  /* Brand accent — registered here so bg-accent-rose / text-accent-rose /
+     border-accent-rose etc. actually generate as real utilities. Previously
+     these were only defined as plain custom properties (not under the
+     --color-* namespace @theme reads), so every hover/badge/accent class
+     using them across the app was silently a no-op. */
+  --color-accent-rose: var(--accent-rose);
+  --color-accent-rose-light: var(--accent-rose-light);
+  --color-accent-sage: var(--accent-sage);
 }
 
 :root {
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-600);
-  --sidebar-primary-foreground: var(--color-blue-50);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
-  --chart-5: var(--color-blue-800);
-  --radius: 0.65rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.235 0.015 65);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.235 0.015 65);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.235 0.015 65);
-  --secondary: oklch(0.98 0.001 286.375);
-  --secondary-foreground: oklch(0.4 0.015 65);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.141 0.005 285.823);
+  --radius: 0.75rem;
+
+  /* Zenn-inspired warm editorial palette: linen / clay-rust / sage */
+  --background: #F4F0E7;
+  --foreground: #211C15;
+  --card: #FFFEFB;
+  --card-foreground: #211C15;
+  --popover: #FFFEFB;
+  --popover-foreground: #211C15;
+  --primary: #B5602B;
+  --primary-foreground: #FFFBF4;
+  --secondary: #F1ECE0;
+  --secondary-foreground: #211C15;
+  --muted: #EAE2CF;
+  --muted-foreground: #71685A;
+  --accent: #F1ECE0;
+  --accent-foreground: #211C15;
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.623 0.214 259.815);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.235 0.015 65);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.623 0.214 259.815);
-  /* Premium accent color - rose */
-  --accent-rose: oklch(0.63 0.24 15);
-  --accent-rose-light: oklch(0.92 0.08 15);
+  --border: #DED2B8;
+  --input: #DED2B8;
+  --ring: #B5602B;
+  --sidebar: #FFFEFB;
+  --sidebar-foreground: #211C15;
+  --sidebar-primary: #B5602B;
+  --sidebar-primary-foreground: #FFFBF4;
+  --sidebar-accent: #F1ECE0;
+  --sidebar-accent-foreground: #211C15;
+  --sidebar-border: #DED2B8;
+  --sidebar-ring: #B5602B;
+  --chart-1: #B5602B;
+  --chart-2: #5E6B4C;
+  --chart-3: #71685A;
+  --chart-4: #DED2B8;
+  --chart-5: #211C15;
+
+  /* Primary brand accent (clay/rust) — used across the app via
+     bg-accent-rose / text-accent-rose / border-accent-rose */
+  --accent-rose: #B5602B;
+  --accent-rose-light: #F3E4D6;
+  /* Secondary brand accent (sage) — for success/in-stock/positive states */
+  --accent-sage: #5E6B4C;
 }
 
 .dark {
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-500);
-  --sidebar-primary-foreground: var(--color-blue-50);
-  --background: oklch(0.141 0.005 285.823);
-  --foreground: oklch(0.85 0.005 65);
-  --card: oklch(0.21 0.006 285.885);
-  --card-foreground: oklch(0.85 0.005 65);
-  --popover: oklch(0.21 0.006 285.885);
-  --popover-foreground: oklch(0.85 0.005 65);
-  --secondary: oklch(0.24 0.006 286.033);
-  --secondary-foreground: oklch(0.7 0.005 65);
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: oklch(0.274 0.006 286.033);
-  --accent-foreground:  oklch(0.92 0.005 65);
+  --background: #14130F;
+  --foreground: #F1EBDD;
+  --card: #1B1914;
+  --card-foreground: #F1EBDD;
+  --popover: #1B1914;
+  --popover-foreground: #F1EBDD;
+  --primary: #E08B4E;
+  --primary-foreground: #1B1300;
+  --secondary: #221F18;
+  --secondary-foreground: #F1EBDD;
+  --muted: #1C1A14;
+  --muted-foreground: #A39880;
+  --accent: #221F18;
+  --accent-foreground: #F1EBDD;
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.488 0.243 264.376);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
-  --chart-5: var(--color-blue-800);
-  --sidebar: oklch(0.21 0.006 285.885);
-  --sidebar-foreground: oklch(0.85 0.005 65);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground:  oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.488 0.243 264.376);
+  --border: #332E22;
+  --input: #332E22;
+  --ring: #E08B4E;
+  --sidebar: #1B1914;
+  --sidebar-foreground: #F1EBDD;
+  --sidebar-primary: #E08B4E;
+  --sidebar-primary-foreground: #1B1300;
+  --sidebar-accent: #221F18;
+  --sidebar-accent-foreground: #F1EBDD;
+  --sidebar-border: #332E22;
+  --sidebar-ring: #E08B4E;
+  --chart-1: #E08B4E;
+  --chart-2: #93A37A;
+  --chart-3: #A39880;
+  --chart-4: #332E22;
+  --chart-5: #F1EBDD;
+
+  --accent-rose: #E08B4E;
+  --accent-rose-light: #332E22;
+  --accent-sage: #93A37A;
 }
 
 @layer base {
@@ -129,9 +147,9 @@
     -moz-osx-font-smoothing: grayscale;
   }
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Playfair Display', serif;
-    font-weight: 600;
-    letter-spacing: -0.02em;
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    letter-spacing: -0.01em;
   }
   h1 {
     @apply text-4xl md:text-5xl lg:text-6xl;
@@ -153,44 +171,65 @@
   input[type="radio"]:not(:disabled) {
     @apply cursor-pointer;
   }
-  /* Premium button styles */
+
+  /* Pill-shaped buttons, matching the editorial/boutique reference style */
   .btn-primary {
-    @apply px-6 py-3 bg-accent text-accent-foreground rounded-lg font-medium transition-all duration-200 hover:shadow-lg hover:scale-105 active:scale-95;
+    @apply px-6 py-3 bg-accent-rose text-primary-foreground rounded-full font-semibold transition-all duration-200 hover:opacity-90 hover:scale-[1.02] active:scale-95;
   }
   .btn-secondary {
-    @apply px-6 py-3 bg-secondary text-foreground rounded-lg font-medium border border-border transition-all duration-200 hover:shadow-md active:scale-95;
+    @apply px-6 py-3 bg-secondary text-foreground rounded-full font-semibold border border-border transition-all duration-200 hover:border-accent-rose active:scale-95;
   }
   .btn-outline {
-    @apply px-6 py-3 bg-transparent text-foreground rounded-lg font-medium border border-border transition-all duration-200 hover:bg-muted active:scale-95;
+    @apply px-6 py-3 bg-transparent text-foreground rounded-full font-semibold border border-border transition-all duration-200 hover:border-accent-rose hover:text-accent-rose active:scale-95;
   }
-  /* Premium card styles */
+
+  /* Cards lift on hover, matching the reference's product-card interaction */
   .card-premium {
-    @apply bg-card rounded-xl shadow-md hover:shadow-lg transition-all duration-300 p-6;
+    @apply bg-card rounded-2xl border border-border transition-all duration-300 hover:shadow-lg p-6;
   }
   .card-hover {
-    @apply transition-all duration-300 hover:shadow-xl hover:-translate-y-1;
+    @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-accent-rose/40;
   }
-  /* Premium input styles */
+
   input[type="text"],
   input[type="email"],
   input[type="password"],
   input[type="number"],
   textarea,
   select {
-    @apply w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-all duration-200;
+    @apply w-full px-4 py-3 bg-card border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent-rose focus:border-transparent transition-all duration-200;
   }
-  /* Premium section divider */
+
   .section-divider {
     @apply h-px bg-gradient-to-r from-transparent via-border to-transparent;
   }
-  /* Premium gradient text */
+
   .gradient-text {
-    background: linear-gradient(135deg, oklch(0.63 0.24 15), oklch(0.75 0.20 15));
+    background: linear-gradient(135deg, #B5602B, #E08B4E);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
-  /* Premium fade animations */
+  .dark .gradient-text {
+    background: linear-gradient(135deg, #E08B4E, #F3B27A);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Small uppercase mono label, used above headlines/section titles —
+     matches the reference's "eyebrow" pattern */
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent-rose);
+  }
+  .mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+
   @keyframes fade-in {
     from {
       opacity: 0;
@@ -204,31 +243,17 @@
   .fade-in {
     animation: fade-in 0.5s ease-out;
   }
-  /* Smooth transitions */
   * {
     @apply transition-colors duration-200;
   }
 }
 
 @layer components {
-  /**
-   * Custom container utility that centers content and adds responsive padding.
-   *
-   * This overrides Tailwind's default container behavior to:
-   * - Auto-center content (mx-auto)
-   * - Add responsive horizontal padding
-   * - Set max-width for large screens
-   *
-   * Usage: <div className="container">...</div>
-   *
-   * For custom widths, use max-w-* utilities directly:
-   * <div className="max-w-6xl mx-auto px-4">...</div>
-   */
   .container {
     width: 100%;
     margin-left: auto;
     margin-right: auto;
-    padding-left: 1rem; /* 16px - mobile padding */
+    padding-left: 1rem;
     padding-right: 1rem;
   }
 
@@ -239,16 +264,16 @@
 
   @media (min-width: 640px) {
     .container {
-      padding-left: 1.5rem; /* 24px - tablet padding */
+      padding-left: 1.5rem;
       padding-right: 1.5rem;
     }
   }
 
   @media (min-width: 1024px) {
     .container {
-      padding-left: 2rem; /* 32px - desktop padding */
+      padding-left: 2rem;
       padding-right: 2rem;
-      max-width: 1280px; /* Standard content width */
+      max-width: 1280px;
     }
   }
 }
