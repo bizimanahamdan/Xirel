@@ -6,6 +6,7 @@ import { trpc } from "@/lib/trpc";
 import { ShoppingBag, Zap, Shirt, ArrowRight, Instagram } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Logo } from "@/components/Logo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { INSTAGRAM_URL, X_URL } from "@/const";
 
 export default function Home() {
@@ -25,7 +26,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-white border-b border-border shadow-sm">
+      <nav className="sticky top-0 z-50 bg-card border-b border-border shadow-sm">
         <div className="container flex items-center justify-between h-16">
           <Link href="/">
             <span className="cursor-pointer">
@@ -67,6 +68,7 @@ export default function Home() {
                 </span>
               </Link>
             )}
+            <ThemeToggle />
           </div>
         </div>
       </nav>
@@ -103,10 +105,10 @@ export default function Home() {
             <div className="relative h-96 md:h-full flex items-center justify-center">
               <div className="absolute inset-0 bg-gradient-to-br from-accent-rose/20 to-transparent rounded-3xl blur-3xl"></div>
               <div className="relative grid grid-cols-2 gap-4">
-                <div className="bg-white rounded-2xl p-8 shadow-lg border border-border flex items-center justify-center h-40">
+                <div className="bg-card rounded-2xl p-8 shadow-lg border border-border flex items-center justify-center h-40">
                   <Zap className="w-16 h-16 text-accent-rose" />
                 </div>
-                <div className="bg-white rounded-2xl p-8 shadow-lg border border-border flex items-center justify-center h-40">
+                <div className="bg-card rounded-2xl p-8 shadow-lg border border-border flex items-center justify-center h-40">
                   <Shirt className="w-16 h-16 text-accent-rose" />
                 </div>
               </div>
@@ -116,7 +118,7 @@ export default function Home() {
       </section>
 
       {/* Categories Section */}
-      <section className="py-16 md:py-24 bg-white">
+      <section className="py-16 md:py-24 bg-card">
         <div className="container">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold mb-4">Shop by Category</h2>
@@ -220,7 +222,7 @@ export default function Home() {
       )}
 
       {/* Features Section */}
-      <section className="py-16 md:py-24 bg-white">
+      <section className="py-16 md:py-24 bg-card">
         <div className="container">
           <div className="grid md:grid-cols-3 gap-8">
             <div className="text-center">
@@ -264,13 +266,13 @@ export default function Home() {
               <div className="mb-4">
                 <Logo size={32} />
               </div>
-              <p className="text-gray-300 text-sm">
+              <p className="text-stone-300 text-sm">
                 Premium shopping experience for discerning customers
               </p>
             </div>
             <div>
               <h4 className="text-lg font-bold mb-4">Shop</h4>
-              <ul className="space-y-2 text-sm text-gray-300">
+              <ul className="space-y-2 text-sm text-stone-300">
                 <li>
                   <Link href="/products?category=electronics">
                     <span className="hover:text-white transition-colors cursor-pointer">Electronics</span>
@@ -285,7 +287,7 @@ export default function Home() {
             </div>
             <div>
               <h4 className="text-lg font-bold mb-4">Account</h4>
-              <ul className="space-y-2 text-sm text-gray-300">
+              <ul className="space-y-2 text-sm text-stone-300">
                 <li>
                   <Link href="/account">
                     <span className="hover:text-white transition-colors cursor-pointer">My Account</span>
@@ -300,7 +302,7 @@ export default function Home() {
             </div>
             <div>
               <h4 className="text-lg font-bold mb-4">Support</h4>
-              <ul className="space-y-2 text-sm text-gray-300">
+              <ul className="space-y-2 text-sm text-stone-300">
                 <li>
                   <Link href="/support">
                     <span className="hover:text-white transition-colors cursor-pointer">Contact Us</span>
@@ -325,8 +327,8 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 border-t border-gray-700 pt-8">
-            <p className="text-sm text-gray-300">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 border-t border-stone-700 pt-8">
+            <p className="text-sm text-stone-300">
               &copy; {new Date().getFullYear()} Xirel. All rights reserved.
             </p>
             <div className="flex items-center gap-4">
