@@ -3,15 +3,33 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { ShoppingBag, Zap, Shirt, ArrowRight, Instagram } from "lucide-react";
+import { ShoppingBag, Zap, Shirt, ArrowRight, Instagram, Truck, RotateCcw, ShieldCheck, MessageCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { INSTAGRAM_URL, X_URL } from "@/const";
+import { toast } from "sonner";
 
 export default function Home() {
   const { user, isAuthenticated } = useAuth();
   const [featuredProducts, setFeaturedProducts] = useState<any[]>([]);
+  const [newsletterEmail, setNewsletterEmail] = useState("");
+
+  const subscribeMutation = trpc.newsletter.subscribe.useMutation({
+    onSuccess: () => {
+      toast.success("You're in — thanks for joining!");
+      setNewsletterEmail("");
+    },
+    onError: () => {
+      toast.error("Something went wrong. Please try again.");
+    },
+  });
+
+  const handleNewsletterSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newsletterEmail.trim()) return;
+    subscribeMutation.mutate({ email: newsletterEmail.trim() });
+  };
 
   const { data: products } = trpc.products.list.useQuery({
     categoryId: undefined,
@@ -74,7 +92,7 @@ export default function Home() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-white via-accent-rose-light to-white py-20 md:py-32">
+      <section className="relative overflow-hidden bg-gradient-to-br from-background via-accent-rose-light to-background py-20 md:py-32">
         <div className="container">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div className="space-y-8">
@@ -149,6 +167,30 @@ export default function Home() {
                 </div>
               </span>
             </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Trust Strip */}
+      <section className="py-8 border-y border-border bg-card">
+        <div className="container">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-4">
+            <div className="flex items-center gap-3">
+              <Truck className="w-5 h-5 text-accent-rose flex-shrink-0" />
+              <span className="text-sm text-muted-foreground">Mobile Money &amp; Card Payment</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <RotateCcw className="w-5 h-5 text-accent-rose flex-shrink-0" />
+              <span className="text-sm text-muted-foreground">7-Day Return Policy</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <ShieldCheck className="w-5 h-5 text-accent-rose flex-shrink-0" />
+              <span className="text-sm text-muted-foreground">Secure Checkout</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <MessageCircle className="w-5 h-5 text-accent-rose flex-shrink-0" />
+              <span className="text-sm text-muted-foreground">WhatsApp Support</span>
+            </div>
           </div>
         </div>
       </section>
@@ -324,6 +366,32 @@ export default function Home() {
                   </Link>
                 </li>
               </ul>
+            </div>
+          </div>
+
+          {/* Newsletter */}
+          <div className="border-t border-stone-700 pt-8 mb-8">
+            <div className="max-w-md">
+              <p className="eyebrow mb-2 opacity-80">Stay in the loop</p>
+              <h4 className="text-xl font-semibold mb-3">Get new arrivals first</h4>
+              <form onSubmit={handleNewsletterSubmit} className="flex gap-2">
+                <input
+                  type="email"
+                  required
+                  value={newsletterEmail}
+                  onChange={(e) => setNewsletterEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="flex-1 px-4 py-2.5 rounded-full bg-white/10 border border-white/20 text-white placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-accent-rose text-sm"
+                />
+                <button
+                  type="submit"
+                  disabled={subscribeMutation.isPending}
+                  className="px-5 py-2.5 rounded-full bg-accent-rose text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+                >
+                  {subscribeMutation.isPending ? "Joining..." : "Join"}
+                </button>
+              </form>
+              <p className="text-xs text-stone-400 mt-2">Occasional updates only, no spam.</p>
             </div>
           </div>
 
