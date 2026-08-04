@@ -12,6 +12,7 @@ import {
   paymentSettings,
   analyticsEvents,
   integrationTokens,
+  newsletterSubscribers,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -149,6 +150,12 @@ async function ensureSchema(client: ReturnType<typeof createClient>): Promise<vo
       refreshToken TEXT,
       refreshTokenExpiresAt INTEGER,
       updatedAt INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+
+    CREATE TABLE IF NOT EXISTS newsletterSubscribers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL UNIQUE,
+      createdAt INTEGER NOT NULL DEFAULT (unixepoch())
     );
   `);
 
@@ -679,4 +686,22 @@ export async function getEmptyResultEvents(days = 30) {
       count: Number(r.count),
     })),
   };
+}
+
+// ============ NEWSLETTER ============
+
+export async function subscribeToNewsletter(email: string) {
+  const db = await ready();
+  const existing = await db
+    .select()
+    .from(newsletterSubscribers)
+    .where(eq(newsletterSubscribers.email, email))
+    .limit(1);
+
+  if (existing.length > 0) {
+    return existing[0];
+  }
+
+  const [row] = await db.insert(newsletterSubscribers).values({ email }).returning();
+  return row;
 }
