@@ -605,6 +605,15 @@ export const appRouter = router({
       }),
   }),
 
+  newsletter: router({
+    subscribe: publicProcedure
+      .input(z.object({ email: z.string().email() }))
+      .mutation(async ({ input }) => {
+        await db.subscribeToNewsletter(input.email);
+        return { success: true } as const;
+      }),
+  }),
+
   support: router({
     chat: publicProcedure
       .input(
