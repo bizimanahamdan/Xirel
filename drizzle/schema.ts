@@ -223,3 +223,18 @@ export const integrationTokens = sqliteTable("integrationTokens", {
 });
 
 export type IntegrationToken = typeof integrationTokens.$inferSelect;
+
+/**
+ * Email newsletter signups (footer capture form). Kept intentionally
+ * simple — just the email and when they joined. Wire this into whatever
+ * email tool you use to actually send campaigns.
+ */
+export const newsletterSubscribers = sqliteTable("newsletterSubscribers", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  email: text("email").notNull().unique(),
+  createdAt: integer("createdAt", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export type NewsletterSubscriber = typeof newsletterSubscribers.$inferSelect;
