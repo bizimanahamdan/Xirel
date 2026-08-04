@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ShoppingBag, Search, ArrowRight } from "lucide-react";
+import { ShoppingBag, Search, ArrowRight, ArrowLeft } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { useAnalyticsTracker } from "@/_core/hooks/useAnalyticsTracker";
 
@@ -102,8 +102,14 @@ export default function Products() {
       </nav>
 
       {/* Header */}
-      <section className="bg-gradient-to-br from-white via-accent-rose-light to-white py-12">
+      <section className="bg-gradient-to-br from-background via-accent-rose-light to-background py-12">
         <div className="container">
+          <Link href="/">
+            <span className="inline-flex items-center gap-2 text-accent-rose hover:text-accent-rose/80 mb-4 cursor-pointer">
+              <ArrowLeft className="w-4 h-4" />
+              Back Home
+            </span>
+          </Link>
           <h1 className="text-4xl md:text-5xl font-bold mb-4">Shop All Products</h1>
           <p className="text-lg text-muted-foreground">
             Discover our premium collection of electronics and fashion
