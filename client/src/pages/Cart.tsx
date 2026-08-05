@@ -1,35 +1,17 @@
 import { Link } from "wouter";
-import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ShoppingBag, Trash2, ArrowLeft, ArrowRight } from "lucide-react";
-import { toast } from "sonner";
 import { useMemo } from "react";
 import { Logo } from "@/components/Logo";
+import { useCart, type CartLine } from "@/_core/hooks/useCart";
 
 export default function Cart() {
-  const { data: cartItems, refetch } = trpc.cart.get.useQuery();
-  const updateQuantityMutation = trpc.cart.updateQuantity.useMutation({
-    onSuccess: () => refetch(),
-  });
-  const removeFromCartMutation = trpc.cart.remove.useMutation({
-    onSuccess: () => {
-      toast.success("Item removed from cart");
-      refetch();
-    },
-  });
-  const clearCartMutation = trpc.cart.clear.useMutation({
-    onSuccess: () => {
-      toast.success("Cart cleared");
-      refetch();
-    },
-  });
+  const cart = useCart();
 
   const totals = useMemo(() => {
-    if (!cartItems) return { subtotal: 0, tax: 0, total: 0 };
-
-    const subtotal = cartItems.reduce((sum, item) => {
+    const subtotal = cart.items.reduce((sum, item) => {
       const price = item.product ? parseFloat(item.product.price) : 0;
       return sum + price * item.quantity;
     }, 0);
@@ -38,9 +20,9 @@ export default function Cart() {
     const total = subtotal + tax;
 
     return { subtotal, tax, total };
-  }, [cartItems]);
+  }, [cart.items]);
 
-  if (!cartItems) {
+  if (cart.isLoading) {
     return (
       <div className="min-h-screen bg-background">
         <nav className="sticky top-0 z-50 bg-card border-b border-border shadow-sm">
@@ -82,9 +64,18 @@ export default function Cart() {
             </a>
           </Link>
           <h1 className="text-4xl font-bold">Shopping Cart</h1>
+          {!cart.isAuthenticated && cart.items.length > 0 && (
+            <p className="text-sm text-muted-foreground mt-2">
+              Shopping as a guest —{" "}
+              <Link href="/login">
+                <a className="text-accent-rose hover:underline">sign in</a>
+              </Link>{" "}
+              to save your cart across devices.
+            </p>
+          )}
         </div>
 
-        {cartItems.length === 0 ? (
+        {cart.items.length === 0 ? (
           <div className="text-center py-20">
             <ShoppingBag className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
             <h2 className="text-2xl font-bold mb-2">Your cart is empty</h2>
@@ -99,7 +90,7 @@ export default function Cart() {
           <div className="grid lg:grid-cols-3 gap-8">
             {/* Cart Items */}
             <div className="lg:col-span-2 space-y-4">
-              {cartItems.map((item) => (
+              {cart.items.map((item: CartLine) => (
                 <Card key={item.id} className="p-6">
                   <div className="flex gap-6">
                     {/* Product Image */}
@@ -121,22 +112,14 @@ export default function Cart() {
                     <div className="flex-1">
                       <Link href={`/products/${item.productId}`}>
                         <a className="text-lg font-semibold hover:text-accent-rose transition-colors">
-                          {item.product?.name}
+                          {item.product?.name ?? "Product"}
                         </a>
                       </Link>
-                      <p className="text-muted-foreground text-sm mb-4">
-                        {item.product?.description?.substring(0, 100)}...
-                      </p>
 
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between mt-4">
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() =>
-                              updateQuantityMutation.mutate({
-                                cartItemId: item.id,
-                                quantity: Math.max(1, item.quantity - 1),
-                              })
-                            }
+                            onClick={() => cart.updateQuantity(item, Math.max(1, item.quantity - 1))}
                             className="px-2 py-1 border border-border rounded hover:bg-muted transition-colors"
                           >
                             −
@@ -146,20 +129,12 @@ export default function Cart() {
                             min="1"
                             value={item.quantity}
                             onChange={(e) =>
-                              updateQuantityMutation.mutate({
-                                cartItemId: item.id,
-                                quantity: Math.max(1, parseInt(e.target.value) || 1),
-                              })
+                              cart.updateQuantity(item, Math.max(1, parseInt(e.target.value) || 1))
                             }
                             className="w-16 text-center"
                           />
                           <button
-                            onClick={() =>
-                              updateQuantityMutation.mutate({
-                                cartItemId: item.id,
-                                quantity: item.quantity + 1,
-                              })
-                            }
+                            onClick={() => cart.updateQuantity(item, item.quantity + 1)}
                             className="px-2 py-1 border border-border rounded hover:bg-muted transition-colors"
                           >
                             +
@@ -168,14 +143,10 @@ export default function Cart() {
 
                         <div className="text-right">
                           <p className="text-2xl font-bold text-accent-rose">
-                            ${(
-                              parseFloat(item.product?.price || "0") * item.quantity
-                            ).toFixed(2)}
+                            ${(parseFloat(item.product?.price || "0") * item.quantity).toFixed(2)}
                           </p>
                           <button
-                            onClick={() =>
-                              removeFromCartMutation.mutate({ cartItemId: item.id })
-                            }
+                            onClick={() => cart.remove(item)}
                             className="text-red-600 hover:text-red-700 text-sm font-medium mt-2 flex items-center gap-1"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -227,17 +198,13 @@ export default function Cart() {
                   </a>
                 </Link>
 
-                <Button
-                  onClick={() => clearCartMutation.mutate()}
-                  variant="outline"
-                  className="w-full"
-                >
+                <Button onClick={() => cart.clear()} variant="outline" className="w-full">
                   Clear Cart
                 </Button>
 
                 <div className="space-y-2 text-sm text-muted-foreground">
-                  <p>✓ Free shipping on orders over $100</p>
-                  <p>✓ 30-day money-back guarantee</p>
+                  <p>✓ Mobile Money &amp; card payment</p>
+                  <p>✓ 7-day return policy</p>
                   <p>✓ Secure checkout</p>
                 </div>
               </Card>
