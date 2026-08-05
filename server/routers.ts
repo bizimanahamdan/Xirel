@@ -326,7 +326,7 @@ export const appRouter = router({
 
   // ============ ORDERS ============
   orders: router({
-    create: protectedProcedure
+    create: publicProcedure
       .input(
         z.object({
           shippingAddress: z.object({
@@ -342,51 +342,108 @@ export const appRouter = router({
           }),
           paymentMethod: z.string().optional(),
           stripePaymentIntentId: z.string().optional(),
+          // Required for guest checkout (no server-side cart to read from).
+          // Ignored for logged-in users, who use their real cart below.
+          items: z
+            .array(z.object({ productId: z.number(), quantity: z.number().int().min(1) }))
+            .optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
-        // Get cart items
-        const cartItems = await db.getCartItems(ctx.user.id);
-        if (cartItems.length === 0) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Cart is empty",
-          });
+        // Resolve who's placing this order — an existing session, or a
+        // lightweight account auto-provisioned by email for guest checkout.
+        // Guests never see a signup form; if they later want to log in with
+        // that email, they'd use "forgot password" to claim it.
+        let userId: number;
+        let isGuestOrder = false;
+
+        if (ctx.user) {
+          userId = ctx.user.id;
+        } else {
+          isGuestOrder = true;
+          const existing = await db.getUserByEmail(input.shippingAddress.email);
+          if (existing) {
+            userId = existing.id;
+          } else {
+            const randomPassword = crypto.randomUUID() + crypto.randomUUID();
+            const passwordHash = await hashPassword(randomPassword);
+            const guestUser = await db.createUser({
+              email: input.shippingAddress.email,
+              passwordHash,
+              name: `${input.shippingAddress.firstName} ${input.shippingAddress.lastName}`.trim(),
+            });
+            if (!guestUser) {
+              throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to start checkout" });
+            }
+            userId = guestUser.id;
+          }
         }
 
-        // Enrich with product details and calculate total
+        // Get cart items — from the server cart for logged-in users, or
+        // directly from the request for guests.
+        let orderItems: Array<{ productId: number; name: string; price: string; quantity: number }>;
         let totalAmount = 0;
-        const orderItems = await Promise.all(
-          cartItems.map(async (item) => {
-            const product = await db.getProductById(item.productId);
-            if (!product) {
-              throw new TRPCError({ code: "NOT_FOUND" });
-            }
 
-            // Check stock
-            if (product.stock < item.quantity) {
-              throw new TRPCError({
-                code: "BAD_REQUEST",
-                message: `${product.name} has insufficient stock`,
-              });
-            }
+        if (isGuestOrder) {
+          if (!input.items || input.items.length === 0) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Cart is empty" });
+          }
 
-            const itemTotal = parseFloat(product.price) * item.quantity;
-            totalAmount += itemTotal;
+          orderItems = await Promise.all(
+            input.items.map(async (item) => {
+              const product = await db.getProductById(item.productId);
+              if (!product) {
+                throw new TRPCError({ code: "NOT_FOUND", message: "A product in your cart no longer exists" });
+              }
+              if (product.stock < item.quantity) {
+                throw new TRPCError({ code: "BAD_REQUEST", message: `${product.name} has insufficient stock` });
+              }
+              totalAmount += parseFloat(product.price) * item.quantity;
+              return {
+                productId: product.id,
+                name: product.name,
+                price: product.price,
+                quantity: item.quantity,
+              };
+            })
+          );
+        } else {
+          const cartItems = await db.getCartItems(userId);
+          if (cartItems.length === 0) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Cart is empty",
+            });
+          }
 
-            return {
-              productId: product.id,
-              name: product.name,
-              price: product.price,
-              quantity: item.quantity,
-            };
-          })
-        );
+          orderItems = await Promise.all(
+            cartItems.map(async (item) => {
+              const product = await db.getProductById(item.productId);
+              if (!product) {
+                throw new TRPCError({ code: "NOT_FOUND" });
+              }
+              if (product.stock < item.quantity) {
+                throw new TRPCError({
+                  code: "BAD_REQUEST",
+                  message: `${product.name} has insufficient stock`,
+                });
+              }
+              const itemTotal = parseFloat(product.price) * item.quantity;
+              totalAmount += itemTotal;
+              return {
+                productId: product.id,
+                name: product.name,
+                price: product.price,
+                quantity: item.quantity,
+              };
+            })
+          );
+        }
 
         // Create order
         const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
         const order = await db.createOrder({
-          userId: ctx.user.id,
+          userId,
           orderNumber,
           totalAmount: totalAmount.toFixed(2),
           shippingAddress: input.shippingAddress,
@@ -395,8 +452,11 @@ export const appRouter = router({
           items: orderItems,
         });
 
-        // Clear cart
-        await db.clearCart(ctx.user.id);
+        // Clear cart (only meaningful for the logged-in path — guests never
+        // had a server-side cart to clear)
+        if (!isGuestOrder) {
+          await db.clearCart(userId);
+        }
 
         // Notify owner
         try {
@@ -406,6 +466,16 @@ export const appRouter = router({
           });
         } catch (error) {
           console.error("Failed to notify owner:", error);
+        }
+
+        // Guests had no session before this — sign them in as their
+        // auto-provisioned account now, so they can immediately pay via
+        // MoMo (which requires a session) and see this order under "My
+        // Account" without ever seeing a signup form.
+        if (isGuestOrder) {
+          const sessionToken = await createSessionToken(userId, ONE_YEAR_MS);
+          const cookieOptions = getSessionCookieOptions(ctx.req);
+          ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
         }
 
         return order;
