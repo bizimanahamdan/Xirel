@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { ShoppingBag, ArrowLeft, Check, AlertCircle, ChevronLeft, ChevronRight, PlayCircle, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
+import { useCart } from "@/_core/hooks/useCart";
 
 export default function ProductDetail() {
   const [match, params] = useRoute("/products/:id");
@@ -24,33 +25,21 @@ export default function ProductDetail() {
   const { data: categories } = trpc.categories.list.useQuery();
   const categoryName = categories?.find((c) => c.id === product?.categoryId)?.name ?? "—";
 
-  const addToCartMutation = trpc.cart.add.useMutation({
-    onSuccess: () => {
-      toast.success("Added to cart!", {
-        description: `${quantity} item${quantity > 1 ? "s" : ""} added successfully`,
-      });
-      setQuantity(1);
-      setIsAdding(false);
-    },
-    onError: (error) => {
-      toast.error("Failed to add to cart", {
-        description: error.message,
-      });
-      setIsAdding(false);
-    },
-  });
+  const cart = useCart();
 
-  const handleAddToCart = async () => {
+  const handleAddToCart = () => {
     if (!product) return;
 
     setIsAdding(true);
     try {
-      await addToCartMutation.mutateAsync({
-        productId: product.id,
-        quantity,
+      cart.add(product.id, quantity);
+      toast.success("Added to cart!", {
+        description: `${quantity} item${quantity > 1 ? "s" : ""} added successfully`,
       });
+      setQuantity(1);
     } catch (error) {
-      console.error("Error adding to cart:", error);
+      toast.error("Failed to add to cart");
+    } finally {
       setIsAdding(false);
     }
   };
