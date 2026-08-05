@@ -8,6 +8,7 @@ import { ArrowLeft, CheckCircle, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Logo } from "@/components/Logo";
+import { useCart } from "@/_core/hooks/useCart";
 
 const shippingAddressSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -50,7 +51,7 @@ export default function Checkout() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollAttemptsRef = useRef(0);
 
-  const { data: cartItems } = trpc.cart.get.useQuery();
+  const cart = useCart();
   const { data: momoStatusInfo } = trpc.payments.momo.status.useQuery();
   const { data: momoPreview } = trpc.payments.momo.previewAmount.useQuery(
     { orderId: pendingOrder?.id },
@@ -58,9 +59,16 @@ export default function Checkout() {
   );
   const requestToPayMutation = trpc.payments.momo.requestToPay.useMutation();
   const checkStatusMutation = trpc.payments.momo.checkStatus.useMutation();
+  const utils = trpc.useUtils();
 
   const createOrderMutation = trpc.orders.create.useMutation({
     onSuccess: (order) => {
+      if (!cart.isAuthenticated) {
+        // Guest checkout silently signs them in as their auto-provisioned
+        // account (needed so MoMo payment works) — refresh client auth
+        // state to match.
+        utils.auth.me.invalidate();
+      }
       if (momoStatusInfo?.configured) {
         // Real-time payment: show the MoMo step instead of confirming immediately.
         setPendingOrder(order);
@@ -157,7 +165,13 @@ export default function Checkout() {
       await createOrderMutation.mutateAsync({
         shippingAddress: formData,
         paymentMethod: momoStatusInfo?.configured ? "momo" : "manual",
+        items: cart.isAuthenticated
+          ? undefined
+          : cart.items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
       });
+      if (!cart.isAuthenticated) {
+        cart.clear();
+      }
     } catch (error) {
       if (error instanceof z.ZodError) {
         const newErrors: Record<string, string> = {};
@@ -581,7 +595,7 @@ export default function Checkout() {
               <h2 className="text-2xl font-bold">Order Summary</h2>
 
               <div className="space-y-3 max-h-96 overflow-y-auto">
-                {cartItems?.map((item) => (
+                {cart.items?.map((item) => (
                   <div key={item.id} className="flex justify-between text-sm">
                     <div>
                       <p className="font-medium">{item.product?.name}</p>
@@ -601,7 +615,7 @@ export default function Checkout() {
                   <span className="text-muted-foreground">Subtotal</span>
                   <span className="font-semibold">
                     ${(
-                      cartItems?.reduce(
+                      cart.items?.reduce(
                         (sum, item) =>
                           sum +
                           parseFloat(item.product?.price || "0") * item.quantity,
@@ -614,7 +628,7 @@ export default function Checkout() {
                   <span className="text-muted-foreground">Tax (10%)</span>
                   <span className="font-semibold">
                     ${(
-                      (cartItems?.reduce(
+                      (cart.items?.reduce(
                         (sum, item) =>
                           sum +
                           parseFloat(item.product?.price || "0") * item.quantity,
@@ -633,7 +647,7 @@ export default function Checkout() {
                 <span>Total</span>
                 <span className="text-accent-rose">
                   ${(
-                    (cartItems?.reduce(
+                    (cart.items?.reduce(
                       (sum, item) =>
                         sum +
                         parseFloat(item.product?.price || "0") * item.quantity,
