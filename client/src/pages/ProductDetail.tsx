@@ -4,10 +4,11 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { ShoppingBag, ArrowLeft, Check, AlertCircle, ChevronLeft, ChevronRight, PlayCircle, ImageIcon } from "lucide-react";
+import { ShoppingBag, ArrowLeft, Check, AlertCircle, ChevronLeft, ChevronRight, PlayCircle, ImageIcon, Star } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
 import { useCart } from "@/_core/hooks/useCart";
+import { ProductReviews } from "@/components/ProductReviews";
 
 export default function ProductDetail() {
   const [match, params] = useRoute("/products/:id");
@@ -24,6 +25,11 @@ export default function ProductDetail() {
   );
   const { data: categories } = trpc.categories.list.useQuery();
   const categoryName = categories?.find((c) => c.id === product?.categoryId)?.name ?? "—";
+  const { data: reviewData } = trpc.reviews.list.useQuery(
+    { productId: productId! },
+    { enabled: !!productId }
+  );
+  const reviewStats = reviewData?.stats;
 
   const cart = useCart();
 
@@ -240,6 +246,26 @@ export default function ProductDetail() {
               <h1 className="text-4xl md:text-5xl font-bold mb-4">
                 {product.name}
               </h1>
+              {reviewStats && reviewStats.count > 0 && (
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="flex items-center gap-0.5">
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <Star
+                        key={n}
+                        className={`w-4 h-4 ${
+                          n <= Math.round(reviewStats.average)
+                            ? "fill-accent-rose text-accent-rose"
+                            : "text-muted-foreground"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-sm font-semibold">{reviewStats.average.toFixed(1)}</span>
+                  <span className="text-sm text-muted-foreground">
+                    ({reviewStats.count} review{reviewStats.count !== 1 ? "s" : ""})
+                  </span>
+                </div>
+              )}
               <div className="flex items-center gap-4 mb-4">
                 <span className="text-4xl font-bold text-accent-rose">
                   ${parseFloat(product.price).toFixed(2)}
@@ -357,6 +383,8 @@ export default function ProductDetail() {
             </div>
           </div>
         </div>
+
+        <ProductReviews productId={product.id} />
       </div>
     </div>
   );
