@@ -1,4 +1,4 @@
-import { eq, and, like, gte, lte, desc, sql } from "drizzle-orm";
+import { eq, and, like, gte, lte, desc, sql, ne } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
 import { createClient } from "@libsql/client";
 import fs from "node:fs";
@@ -13,6 +13,7 @@ import {
   analyticsEvents,
   integrationTokens,
   newsletterSubscribers,
+  reviews,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -156,6 +157,19 @@ async function ensureSchema(client: ReturnType<typeof createClient>): Promise<vo
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       email TEXT NOT NULL UNIQUE,
       createdAt INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+
+    CREATE TABLE IF NOT EXISTS reviews (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      productId INTEGER NOT NULL,
+      userId INTEGER NOT NULL,
+      rating INTEGER NOT NULL,
+      title TEXT,
+      comment TEXT,
+      verified INTEGER NOT NULL DEFAULT 0,
+      createdAt INTEGER NOT NULL DEFAULT (unixepoch()),
+      updatedAt INTEGER NOT NULL DEFAULT (unixepoch()),
+      UNIQUE(productId, userId)
     );
   `);
 
@@ -704,4 +718,121 @@ export async function subscribeToNewsletter(email: string) {
 
   const [row] = await db.insert(newsletterSubscribers).values({ email }).returning();
   return row;
+}
+
+// ============ REVIEWS ============
+
+/** True if this user has any order (past "pending") that includes this product. */
+export async function hasUserPurchasedProduct(userId: number, productId: number): Promise<boolean> {
+  const db = await ready();
+  const userOrders = await db
+    .select()
+    .from(orders)
+    .where(and(eq(orders.userId, userId), ne(orders.status, "pending"), ne(orders.status, "cancelled")));
+
+  return userOrders.some(order => (order.items ?? []).some(item => item.productId === productId));
+}
+
+/** Creates a new review, or updates the user's existing one for this product
+ * (one review per user per product — resubmitting edits it). */
+export async function upsertReview(data: {
+  productId: number;
+  userId: number;
+  rating: number;
+  title?: string | null;
+  comment?: string | null;
+}) {
+  const db = await ready();
+  const verified = await hasUserPurchasedProduct(data.userId, data.productId);
+
+  const existing = await db
+    .select()
+    .from(reviews)
+    .where(and(eq(reviews.productId, data.productId), eq(reviews.userId, data.userId)))
+    .limit(1);
+
+  if (existing.length > 0) {
+    await db
+      .update(reviews)
+      .set({
+        rating: data.rating,
+        title: data.title ?? null,
+        comment: data.comment ?? null,
+        verified,
+        updatedAt: new Date(),
+      })
+      .where(eq(reviews.id, existing[0].id));
+    return getReviewById(existing[0].id);
+  }
+
+  const [row] = await db.insert(reviews).values({ ...data, verified }).returning();
+  return row;
+}
+
+export async function getReviewById(id: number) {
+  const db = await ready();
+  const result = await db.select().from(reviews).where(eq(reviews.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getUserReviewForProduct(userId: number, productId: number) {
+  const db = await ready();
+  const result = await db
+    .select()
+    .from(reviews)
+    .where(and(eq(reviews.productId, productId), eq(reviews.userId, userId)))
+    .limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+/** Reviews for a product, newest first, with the reviewer's display name attached. */
+export async function getProductReviews(productId: number) {
+  const db = await ready();
+  const rows = await db
+    .select({
+      id: reviews.id,
+      productId: reviews.productId,
+      userId: reviews.userId,
+      rating: reviews.rating,
+      title: reviews.title,
+      comment: reviews.comment,
+      verified: reviews.verified,
+      createdAt: reviews.createdAt,
+      reviewerName: users.name,
+      reviewerEmail: users.email,
+    })
+    .from(reviews)
+    .innerJoin(users, eq(reviews.userId, users.id))
+    .where(eq(reviews.productId, productId))
+    .orderBy(desc(reviews.createdAt));
+
+  // Show a first-name-only-ish display name, never the raw email, to keep
+  // reviewer identities reasonably private on a public product page.
+  return rows.map(r => ({
+    ...r,
+    reviewerName: r.reviewerName?.trim() || r.reviewerEmail.split("@")[0],
+    reviewerEmail: undefined,
+  }));
+}
+
+export async function getProductReviewStats(productId: number) {
+  const db = await ready();
+  const result = await db
+    .select({
+      count: sql<number>`count(*)`,
+      average: sql<number>`avg(${reviews.rating})`,
+    })
+    .from(reviews)
+    .where(eq(reviews.productId, productId));
+
+  const count = Number(result[0]?.count ?? 0);
+  const average = result[0]?.average ? Number(result[0].average) : 0;
+
+  return { count, average: Math.round(average * 10) / 10 };
+}
+
+export async function deleteReview(id: number) {
+  const db = await ready();
+  await db.delete(reviews).where(eq(reviews.id, id));
+  return true;
 }
