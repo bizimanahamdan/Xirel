@@ -238,3 +238,28 @@ export const newsletterSubscribers = sqliteTable("newsletterSubscribers", {
 });
 
 export type NewsletterSubscriber = typeof newsletterSubscribers.$inferSelect;
+
+/**
+ * Product reviews. One per user per product (resubmitting updates their
+ * existing review rather than creating a duplicate). `verified` is set
+ * automatically based on whether the reviewer has an order containing this
+ * product — not self-reported.
+ */
+export const reviews = sqliteTable("reviews", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  productId: integer("productId").notNull(),
+  userId: integer("userId").notNull(),
+  rating: integer("rating").notNull(),
+  title: text("title"),
+  comment: text("comment"),
+  verified: integer("verified", { mode: "boolean" }).default(false).notNull(),
+  createdAt: integer("createdAt", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updatedAt", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export type Review = typeof reviews.$inferSelect;
+export type InsertReview = typeof reviews.$inferInsert;
