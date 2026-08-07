@@ -246,6 +246,64 @@ export const appRouter = router({
       }),
   }),
 
+  // ============ REVIEWS ============
+  reviews: router({
+    list: publicProcedure
+      .input(z.object({ productId: z.number() }))
+      .query(async ({ input }) => {
+        const [items, stats] = await Promise.all([
+          db.getProductReviews(input.productId),
+          db.getProductReviewStats(input.productId),
+        ]);
+        return { items, stats };
+      }),
+
+    myReview: protectedProcedure
+      .input(z.object({ productId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        return await db.getUserReviewForProduct(ctx.user.id, input.productId);
+      }),
+
+    submit: protectedProcedure
+      .input(
+        z.object({
+          productId: z.number(),
+          rating: z.number().int().min(1).max(5),
+          title: z.string().max(120).optional(),
+          comment: z.string().max(2000).optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const product = await db.getProductById(input.productId);
+        if (!product) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Product not found" });
+        }
+
+        return await db.upsertReview({
+          productId: input.productId,
+          userId: ctx.user.id,
+          rating: input.rating,
+          title: input.title,
+          comment: input.comment,
+        });
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const review = await db.getReviewById(input.id);
+        if (!review) {
+          throw new TRPCError({ code: "NOT_FOUND" });
+        }
+        // Authors can remove their own review; admins can moderate any.
+        if (review.userId !== ctx.user.id && ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        await db.deleteReview(input.id);
+        return { success: true } as const;
+      }),
+  }),
+
   // ============ CART ============
   cart: router({
     get: protectedProcedure.query(async ({ ctx }) => {
