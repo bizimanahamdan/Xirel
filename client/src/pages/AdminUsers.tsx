@@ -99,6 +99,11 @@ export default function AdminUsers() {
                 Analytics
               </span>
             </Link>
+            <Link href="/admin/newsletter">
+              <span className="block px-4 py-2 rounded-lg hover:bg-secondary transition-colors cursor-pointer flex-shrink-0 whitespace-nowrap">
+                Newsletter
+              </span>
+            </Link>
             <Link href="/admin/payment-settings">
               <span className="block px-4 py-2 rounded-lg hover:bg-secondary transition-colors cursor-pointer flex-shrink-0 whitespace-nowrap">
                 Payment Settings
