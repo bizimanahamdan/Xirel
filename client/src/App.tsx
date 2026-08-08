@@ -17,6 +17,7 @@ import AdminOrders from "@/pages/AdminOrders";
 import AdminUsers from "@/pages/AdminUsers";
 import AdminPaymentSettings from "@/pages/AdminPaymentSettings";
 import AdminAnalytics from "@/pages/AdminAnalytics";
+import AdminNewsletter from "@/pages/AdminNewsletter";
 import Orders from "@/pages/Orders";
 import Login from "@/pages/Login";
 import Account from "@/pages/Account";
@@ -64,6 +65,7 @@ function Router() {
         <Route path={"/admin/users"} component={AdminUsers} />
         <Route path={"/admin/payment-settings"} component={AdminPaymentSettings} />
         <Route path={"/admin/analytics"} component={AdminAnalytics} />
+        <Route path={"/admin/newsletter"} component={AdminNewsletter} />
         <Route path={"/404"} component={NotFound} />
         {/* Final fallback route */}
         <Route component={NotFound} />
