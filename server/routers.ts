@@ -740,6 +740,10 @@ export const appRouter = router({
         await db.subscribeToNewsletter(input.email);
         return { success: true } as const;
       }),
+
+    list: adminProcedure.query(async () => {
+      return await db.getAllNewsletterSubscribers();
+    }),
   }),
 
   support: router({
