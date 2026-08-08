@@ -720,6 +720,11 @@ export async function subscribeToNewsletter(email: string) {
   return row;
 }
 
+export async function getAllNewsletterSubscribers() {
+  const db = await ready();
+  return db.select().from(newsletterSubscribers).orderBy(desc(newsletterSubscribers.createdAt));
+}
+
 // ============ REVIEWS ============
 
 /** True if this user has any order (past "pending") that includes this product. */
