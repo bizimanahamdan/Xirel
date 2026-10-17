@@ -38,8 +38,8 @@ export async function storagePut(
         resource_type: "image",
       });
       return { key: result.public_id, url: result.secure_url };
-    } catch (error) {
-      console.error("Cloudinary upload failed, falling back to inline storage:", error);
+    } catch {
+      console.warn("Cloudinary upload failed; falling back to inline storage.");
       // Fall through to the data-URI fallback below rather than losing the
       // upload entirely.
     }
@@ -78,8 +78,8 @@ export async function storeRemoteVideo(sourceUrl: string): Promise<string> {
       resource_type: "video",
     });
     return result.secure_url;
-  } catch (error) {
-    console.error("Failed to re-host showcase video on Cloudinary, using original URL:", error);
+  } catch {
+    console.warn("Failed to re-host showcase video on Cloudinary; using original URL.");
     return sourceUrl;
   }
 }

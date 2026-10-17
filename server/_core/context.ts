@@ -11,21 +11,17 @@ export type TrpcContext = {
   user: User | null;
 };
 
-export async function createContext(opts: CreateExpressContextOptions): Promise<TrpcContext> {
-  let user: User | null = null;
+export async function createContext(
+  opts: CreateExpressContextOptions
+): Promise<TrpcContext> {
+  const cookies = parseCookieHeader(opts.req.headers.cookie ?? "");
+  const sessionCookie = cookies[COOKIE_NAME];
+  const userId = await verifySessionToken(sessionCookie);
 
-  try {
-    const cookies = parseCookieHeader(opts.req.headers.cookie ?? "");
-    const sessionCookie = cookies[COOKIE_NAME];
-    const userId = await verifySessionToken(sessionCookie);
-
-    if (userId) {
-      user = (await db.getUserById(userId)) ?? null;
-    }
-  } catch {
-    // Authentication is optional for public procedures.
-    user = null;
-  }
+  // Invalid or expired cookies resolve to an anonymous request. Database
+  // failures are deliberately allowed to propagate instead of being hidden
+  // as an unauthenticated public request.
+  const user = userId ? ((await db.getUserById(userId)) ?? null) : null;
 
   return {
     req: opts.req,

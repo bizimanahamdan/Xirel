@@ -23,8 +23,7 @@ async function printifyFetch(path: string, options: RequestInit = {}) {
   });
 
   if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    throw new Error(`Printify API error (${response.status}): ${body || response.statusText}`);
+    throw new Error(`Printify API request failed (${response.status}).`);
   }
 
   return response.json();

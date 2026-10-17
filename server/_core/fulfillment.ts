@@ -92,12 +92,12 @@ async function fulfillWithPrintify(
       status: "placed",
       createdAt,
     });
-  } catch (error) {
+  } catch {
     await db.appendOrderFulfillment(order.id, {
       provider: "printify",
       productId: item.productId,
       status: "failed",
-      error: error instanceof Error ? error.message : "Unknown error placing Printify order",
+      error: "Printify fulfillment failed. Verify provider status before retrying.",
       createdAt,
     });
   }
@@ -144,12 +144,12 @@ async function fulfillWithCJ(
       status: "placed",
       createdAt,
     });
-  } catch (error) {
+  } catch {
     await db.appendOrderFulfillment(order.id, {
       provider: "cj",
       productId: item.productId,
       status: "failed",
-      error: error instanceof Error ? error.message : "Unknown error placing CJ order",
+      error: "CJ fulfillment failed. Verify provider status before retrying.",
       createdAt,
     });
   }

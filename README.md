@@ -9,13 +9,13 @@ external database, no internet connection required after install.
 This project was originally scaffolded on Manus's cloud platform and relied
 on their infrastructure for things a self-hosted app can't assume:
 
-| Original (cloud-dependent)      | Now (local/offline)                     |
-|----------------------------------|------------------------------------------|
-| Manus OAuth login                | Local email + password login (JWT cookie) |
-| MySQL on a hosted DB server       | SQLite file in `./data/store.db`          |
-| S3 file storage via Forge proxy  | Files saved to `./data/uploads`, served at `/uploads` |
-| Forge "notify owner" API         | Logs to the server console                |
-| `vite-plugin-manus-runtime`      | Removed                                   |
+| Original (cloud-dependent)      | Now (local/offline)                                   |
+| ------------------------------- | ----------------------------------------------------- |
+| Manus OAuth login               | Local email + password login (JWT cookie)             |
+| MySQL on a hosted DB server     | SQLite file in `./data/store.db`                      |
+| S3 file storage via Forge proxy | Files saved to `./data/uploads`, served at `/uploads` |
+| Forge "notify owner" API        | Logs to the server console                            |
+| `vite-plugin-manus-runtime`     | Removed                                               |
 
 Stripe support is still in the codebase (for real payment processing) but is
 **disabled by default** — the store works completely without it, and enabling
@@ -78,14 +78,23 @@ This repo includes a `Dockerfile` that works on both Railway and Render. Either
 way, you need **persistent storage** for the SQLite database and uploaded
 images — that's the one thing that rules out purely serverless hosts.
 
-Before deploying, set these environment variables on whichever platform you
-pick:
+Before deploying, configure these environment variables on whichever platform
+you pick:
 
-- `JWT_SECRET` — a long random string (Render can auto-generate this for you; see `render.yaml`)
-- `ADMIN_EMAIL` — **set this to your own email before anyone else can register.**
-  Only this exact address can become admin, so a stranger can't sign up first
-  and grab the admin account. (If you leave it unset, the very first person to
-  register becomes admin instead — fine for local use, risky once it's public.)
+- `JWT_SECRET` — required in production; use a unique random value with at least
+  32 bytes of cryptographic strength. Render can generate this automatically.
+- `ADMIN_EMAIL` — the exact operator email allowed for safe first-admin bootstrap.
+  Configure it before registering that address. If no administrator exists, only
+  this configured account can be promoted; with `ADMIN_EMAIL` unset, every public
+  registration remains an ordinary user.
+- `SESSION_TTL_DAYS` — optional whole number from 1 to 30 (default 7).
+- `TRUST_PROXY_HOPS` — number of trusted reverse proxies (Render uses 1).
+- `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` — use the same shared database for
+  every instance if the app runs with multiple instances; rate-limit counters are
+  stored there rather than only in process memory.
+
+See [`SECURITY.md`](SECURITY.md) for the controlled JWT rotation and administrator
+bootstrap procedures.
 
 ### Railway
 
@@ -99,20 +108,29 @@ pick:
 
 1. Push this repo to GitHub. In Render, choose **New → Blueprint** and point it at the repo — it will pick up `render.yaml` automatically.
 2. Render will prompt you to fill in `ADMIN_EMAIL` (marked `sync: false` in the blueprint) and will auto-generate `JWT_SECRET`.
-3. Note: Render's **free** web services can't attach a persistent disk. `render.yaml` uses the `starter` plan (~$7/mo), which is the cheapest tier that supports one. Without a paid plan + disk, your database and uploads would be wiped on every restart.
+3. Note: the checked-in `render.yaml` uses Render's **free** plan, which has no persistent disk. Configure the prompted `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` values before relying on production data; otherwise the local SQLite fallback may be lost on restart. Alternatively, switch to a paid plan and configure persistent storage.
 
 ### Either platform, manually with just Docker
 
 ```bash
+# Generate a strong secret once and persist it in your deployment secret manager:
+export JWT_SECRET="$(openssl rand -base64 48)"
 docker build -t ecommerce-store .
 docker run -p 3000:3000 \
-  -e JWT_SECRET=your-long-random-secret \
+  -e JWT_SECRET="${JWT_SECRET:?Set JWT_SECRET first}" \
   -e ADMIN_EMAIL=you@example.com \
   -v ecommerce-data:/data \
   ecommerce-store
 ```
 
-After deploying, visit your URL, register with the email you set as
-`ADMIN_EMAIL` first, and you'll land in `/admin`. Then run the seed step
-against the deployed database if you want the sample products (or just add
-your own through the admin panel).
+Do not generate a new `JWT_SECRET` for each restart; changing it invalidates all active sessions. See [`SECURITY.md`](SECURITY.md) for the controlled rotation procedure.
+
+On a fresh database, set `ADMIN_EMAIL` before deployment, then register that
+exact address. The server atomically promotes it only when no administrator
+already exists. On an existing database, current administrators are preserved;
+if none exist, configure `ADMIN_EMAIL` for an operator-controlled account and
+restart before registering or logging in to that account. A missing
+`ADMIN_EMAIL` never grants admin to a public registrant.
+
+Then run the seed step against the deployed database if you want the sample
+products (or add your own through the admin panel).

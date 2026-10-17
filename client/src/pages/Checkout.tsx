@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { TRPCClientError } from "@trpc/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -130,8 +131,20 @@ export default function Checkout() {
             setMomoStatus("failed");
             setMomoError("We didn't hear back in time. You can try again.");
           }
-        } catch {
-          // transient error — keep polling until the attempt cap is hit
+        } catch (error) {
+          if (
+            error instanceof TRPCClientError &&
+            (error.data?.code === "UNAUTHORIZED" || error.data?.code === "FORBIDDEN")
+          ) {
+            stopPolling();
+            setMomoStatus("failed");
+            setMomoError("Your session expired or no longer has access. Sign in and try again.");
+          } else if (pollAttemptsRef.current > 40) {
+            stopPolling();
+            setMomoStatus("failed");
+            setMomoError("We couldn't confirm the payment status in time. Please try again.");
+          }
+          // Other transient provider/network errors are retried until the poll cap.
         }
       }, 3000);
     } catch (error: any) {

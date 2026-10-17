@@ -172,7 +172,7 @@ export function ProductReviews({ productId }: { productId: number }) {
                   </div>
                   {review.title && <p className="font-semibold">{review.title}</p>}
                 </div>
-                {(user?.id === review.userId || user?.role === "admin") && (
+                {(myReview?.id === review.id || user?.role === "admin") && (
                   <button
                     onClick={() => deleteMutation.mutate({ id: review.id })}
                     className="text-muted-foreground hover:text-destructive"

@@ -1,4 +1,4 @@
-import { eq, and, like, gte, lte, desc, sql, ne } from "drizzle-orm";
+import { eq, and, like, gte, lte, lt, inArray, desc, sql, ne } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
 import { createClient } from "@libsql/client";
 import fs from "node:fs";
@@ -14,6 +14,7 @@ import {
   integrationTokens,
   newsletterSubscribers,
   reviews,
+  authRateLimits,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -171,6 +172,12 @@ async function ensureSchema(client: ReturnType<typeof createClient>): Promise<vo
       updatedAt INTEGER NOT NULL DEFAULT (unixepoch()),
       UNIQUE(productId, userId)
     );
+
+    CREATE TABLE IF NOT EXISTS authRateLimits (
+      key TEXT PRIMARY KEY,
+      windowStartedAt INTEGER NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0
+    );
   `);
 
     // CREATE TABLE IF NOT EXISTS only helps brand-new databases — a database
@@ -214,7 +221,6 @@ export async function createUser(data: {
   email: string;
   passwordHash: string;
   name?: string | null;
-  role?: "user" | "admin";
 }) {
   const db = await ready();
   const [row] = await db
@@ -223,7 +229,7 @@ export async function createUser(data: {
       email: data.email,
       passwordHash: data.passwordHash,
       name: data.name ?? null,
-      role: data.role ?? "user",
+      role: "user",
     })
     .returning();
   return row;
@@ -236,8 +242,38 @@ export async function touchLastSignedIn(userId: number) {
 
 export async function getUserByEmail(email: string) {
   const db = await ready();
-  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  const normalizedEmail = email.trim().toLowerCase();
+  const result = await db
+    .select()
+    .from(users)
+    .where(sql`lower(${users.email}) = ${normalizedEmail}`)
+    .limit(1);
   return result.length > 0 ? result[0] : undefined;
+}
+
+/**
+ * Atomically promotes only the configured ADMIN_EMAIL, and only when no
+ * administrator currently exists. This one-statement conditional update is
+ * serialized by SQLite/libSQL, including across Turso-backed instances.
+ */
+export async function bootstrapAdminForEmail(email: string) {
+  const db = await ready();
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail) return undefined;
+
+  await db.run(sql`
+    UPDATE users
+    SET role = 'admin', updatedAt = unixepoch()
+    WHERE id = (
+      SELECT id FROM users
+      WHERE lower(email) = ${normalizedEmail}
+      ORDER BY id
+      LIMIT 1
+    )
+    AND NOT EXISTS (SELECT 1 FROM users WHERE role = 'admin')
+  `);
+
+  return getUserByEmail(normalizedEmail);
 }
 
 export async function getUserById(id: number) {
@@ -253,8 +289,40 @@ export async function getAllUsers() {
 
 export async function updateUserRole(userId: number, role: "user" | "admin") {
   const db = await ready();
-  await db.update(users).set({ role }).where(eq(users.id, userId));
+  await db.update(users).set({ role, updatedAt: new Date() }).where(eq(users.id, userId));
   return getUserById(userId);
+}
+
+/** Atomically increments an expiring shared authentication-attempt counter. */
+export async function incrementAuthRateLimit(key: string, windowMs: number, now = Date.now()) {
+  const db = await ready();
+  const expiredBefore = now - windowMs;
+  const [row] = await db
+    .insert(authRateLimits)
+    .values({ key, windowStartedAt: now, attempts: 1 })
+    .onConflictDoUpdate({
+      target: authRateLimits.key,
+      set: {
+        windowStartedAt: sql`CASE WHEN ${authRateLimits.windowStartedAt} <= ${expiredBefore} THEN ${now} ELSE ${authRateLimits.windowStartedAt} END`,
+        attempts: sql`CASE WHEN ${authRateLimits.windowStartedAt} <= ${expiredBefore} THEN 1 ELSE ${authRateLimits.attempts} + 1 END`,
+      },
+    })
+    .returning();
+
+  if (!row) throw new Error("Failed to update authentication rate limit counter.");
+  return row;
+}
+
+/** Clears only the supplied pseudonymous buckets after a successful login. */
+export async function clearAuthRateLimits(keys: string[]) {
+  if (keys.length === 0) return;
+  const db = await ready();
+  await db.delete(authRateLimits).where(inArray(authRateLimits.key, keys));
+}
+
+export async function deleteExpiredAuthRateLimits(olderThan: number) {
+  const db = await ready();
+  await db.delete(authRateLimits).where(lt(authRateLimits.windowStartedAt, olderThan));
 }
 
 // ============ CATEGORIES ============
@@ -466,8 +534,27 @@ export async function updateOrderStatus(
   status: "pending" | "paid" | "processing" | "shipped" | "delivered" | "cancelled"
 ) {
   const db = await ready();
-  await db.update(orders).set({ status }).where(eq(orders.id, id));
+  await db.update(orders).set({ status, updatedAt: new Date() }).where(eq(orders.id, id));
   return getOrderById(id);
+}
+
+/** Confirms a provider-verified payment only while the order is still pending. */
+export async function markOrderPaidIfPending(id: number) {
+  const db = await ready();
+  const [updated] = await db
+    .update(orders)
+    .set({ status: "paid", updatedAt: new Date() })
+    .where(and(eq(orders.id, id), eq(orders.status, "pending")))
+    .returning({ id: orders.id });
+  return updated ? getOrderById(id) : undefined;
+}
+
+export async function setOrderStripePaymentIntentId(orderId: number, paymentIntentId: string) {
+  const db = await ready();
+  await db
+    .update(orders)
+    .set({ stripePaymentIntentId: paymentIntentId, updatedAt: new Date() })
+    .where(and(eq(orders.id, orderId), eq(orders.status, "pending")));
 }
 
 export async function deleteOrder(id: number) {
@@ -797,26 +884,23 @@ export async function getProductReviews(productId: number) {
     .select({
       id: reviews.id,
       productId: reviews.productId,
-      userId: reviews.userId,
       rating: reviews.rating,
       title: reviews.title,
       comment: reviews.comment,
       verified: reviews.verified,
       createdAt: reviews.createdAt,
       reviewerName: users.name,
-      reviewerEmail: users.email,
     })
     .from(reviews)
     .innerJoin(users, eq(reviews.userId, users.id))
     .where(eq(reviews.productId, productId))
     .orderBy(desc(reviews.createdAt));
 
-  // Show a first-name-only-ish display name, never the raw email, to keep
-  // reviewer identities reasonably private on a public product page.
-  return rows.map(r => ({
-    ...r,
-    reviewerName: r.reviewerName?.trim() || r.reviewerEmail.split("@")[0],
-    reviewerEmail: undefined,
+  // Public reviews get a first-name display label only; never return the
+  // reviewer email or stable user ID from the joined user record.
+  return rows.map(({ reviewerName, ...review }) => ({
+    ...review,
+    reviewerName: reviewerName?.trim().split(/\s+/)[0] || "Customer",
   }));
 }
 

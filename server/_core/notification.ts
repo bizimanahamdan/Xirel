@@ -10,6 +10,6 @@ export type NotificationPayload = {
  * yourself if you want real notifications.
  */
 export async function notifyOwner(payload: NotificationPayload): Promise<boolean> {
-  console.log(`[Notification] ${payload.title}: ${payload.content}`);
+  console.info("[Notification] Owner notification queued.");
   return true;
 }

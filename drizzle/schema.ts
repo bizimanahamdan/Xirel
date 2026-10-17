@@ -3,7 +3,7 @@ import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
 
 /**
  * Local users table. Auth is email + password (bcrypt hash) — no external
- * OAuth provider required. The very first account created becomes admin.
+ * OAuth provider required. Administrator promotion is server-controlled.
  */
 export const users = sqliteTable("users", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -263,3 +263,12 @@ export const reviews = sqliteTable("reviews", {
 
 export type Review = typeof reviews.$inferSelect;
 export type InsertReview = typeof reviews.$inferInsert;
+
+/** Shared, expiring authentication attempt counters for multi-instance deployments. */
+export const authRateLimits = sqliteTable("authRateLimits", {
+  key: text("key").primaryKey(),
+  windowStartedAt: integer("windowStartedAt").notNull(),
+  attempts: integer("attempts").notNull().default(0),
+});
+
+export type AuthRateLimit = typeof authRateLimits.$inferSelect;

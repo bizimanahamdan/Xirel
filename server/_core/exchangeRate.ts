@@ -25,8 +25,8 @@ async function fetchLiveUsdToRwfRate(): Promise<number | null> {
     const rate = data?.rates?.RWF;
 
     return typeof rate === "number" && rate > 0 ? rate : null;
-  } catch (error) {
-    console.error("Live exchange rate fetch failed, using fallback rate:", error);
+  } catch {
+    console.warn("Live exchange rate fetch failed; using fallback rate.");
     return null;
   }
 }

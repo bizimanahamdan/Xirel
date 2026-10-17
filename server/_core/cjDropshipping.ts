@@ -36,8 +36,8 @@ async function getAccessToken(): Promise<string> {
   ) {
     try {
       return await refreshAccessToken(stored.refreshToken);
-    } catch (error) {
-      console.error("CJ token refresh failed, falling back to fresh login:", error);
+    } catch {
+      console.warn("CJ token refresh failed; attempting fresh login.");
     }
   }
 
@@ -53,7 +53,7 @@ async function freshLogin(): Promise<string> {
 
   const data = await response.json();
   if (!response.ok || data?.result === false) {
-    throw new Error(`CJ login failed: ${data?.message ?? response.statusText}`);
+    throw new Error(`CJ login failed (${response.status}).`);
   }
 
   return storeTokenResponse(data.data);
@@ -68,7 +68,7 @@ async function refreshAccessToken(refreshToken: string): Promise<string> {
 
   const data = await response.json();
   if (!response.ok || data?.result === false) {
-    throw new Error(`CJ token refresh failed: ${data?.message ?? response.statusText}`);
+    throw new Error(`CJ token refresh failed (${response.status}).`);
   }
 
   return storeTokenResponse(data.data);
@@ -98,7 +98,7 @@ async function cjFetch(path: string, options: RequestInit = {}) {
 
   const data = await response.json();
   if (!response.ok || data?.result === false) {
-    throw new Error(`CJ API error: ${data?.message ?? response.statusText}`);
+    throw new Error(`CJ API request failed (${response.status}).`);
   }
 
   return data;

@@ -129,9 +129,7 @@ export function CJImportPanel({
                       importMutation.mutate({
                         productId: p.productId,
                         vid: p.vid,
-                        name: p.nameEn,
-                        price: p.sellPrice,
-                        imageUrl: p.bigImage,
+                        keyword: searchTerm || undefined,
                         categoryId: Number(importCategoryId),
                         stock: Number(importStock) || 0,
                       });

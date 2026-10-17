@@ -38,8 +38,7 @@ export async function getChatbotReply(history: ChatMessage[]): Promise<string> {
     });
 
     if (!response.ok) {
-      const errorBody = await response.text().catch(() => "");
-      console.error("Groq API error:", response.status, errorBody);
+      console.warn("Groq API request failed.", response.status);
       return "Sorry, I'm having trouble responding right now — please try WhatsApp instead.";
     }
 
@@ -48,8 +47,8 @@ export async function getChatbotReply(history: ChatMessage[]): Promise<string> {
     return typeof reply === "string" && reply.trim()
       ? reply.trim()
       : "Sorry, I didn't quite catch that — could you rephrase, or reach us on WhatsApp?";
-  } catch (error) {
-    console.error("Groq request failed:", error);
+  } catch {
+    console.warn("Groq request failed.");
     return "Sorry, I'm having trouble responding right now — please try WhatsApp instead.";
   }
 }

@@ -30,8 +30,7 @@ async function getAccessToken(): Promise<string> {
   });
 
   if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    throw new Error(`MoMo token request failed (${response.status}): ${body}`);
+    throw new Error(`MoMo token request failed (${response.status}).`);
   }
 
   const data = await response.json();
@@ -89,8 +88,7 @@ export async function requestToPay(params: {
   });
 
   if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    throw new Error(`MoMo request-to-pay failed (${response.status}): ${body}`);
+    throw new Error(`MoMo request-to-pay failed (${response.status}).`);
   }
 
   return { referenceId };
@@ -110,8 +108,7 @@ export async function checkRequestToPayStatus(referenceId: string): Promise<{ st
   });
 
   if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    throw new Error(`MoMo status check failed (${response.status}): ${body}`);
+    throw new Error(`MoMo status check failed (${response.status}).`);
   }
 
   const data = await response.json();

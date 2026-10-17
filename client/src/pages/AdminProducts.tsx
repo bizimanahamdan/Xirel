@@ -164,12 +164,18 @@ export default function AdminProducts() {
     if (imageFiles.length > 0) {
       try {
         const uploaded: string[] = [];
+        const supportedContentTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"] as const;
         for (const file of imageFiles) {
+          const contentType = file.type || "image/jpeg";
+          if (!supportedContentTypes.includes(contentType as (typeof supportedContentTypes)[number])) {
+            toast.error("Unsupported image format. Use JPEG, PNG, WEBP, GIF, or AVIF.");
+            return;
+          }
           const base64 = await readFileAsBase64(file);
           const result = await uploadImageMutation.mutateAsync({
             imageData: base64,
             fileName: file.name,
-            contentType: file.type || "image/jpeg",
+            contentType: contentType as (typeof supportedContentTypes)[number],
           });
           uploaded.push(result.url);
         }
@@ -436,7 +442,7 @@ export default function AdminProducts() {
                   </label>
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp,image/gif,image/avif,.jpg,.jpeg,.png,.webp,.gif,.avif"
                     multiple
                     onChange={(e) => setImageFiles(Array.from(e.target.files ?? []))}
                     className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
